@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Attendance – {{ subject.name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light py-4">
+
+  <div class="container">
+    <h3 class="mb-4 text-center">📊 Attendance – {{ subject.name }} ({{ subject.code }})</h3>
+
+    {% if records %}
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped">
+        <thead class="table-dark text-center">
+          <tr>
+            <th>Roll No</th>
+            <th>Name</th>
+            <th>Present</th>
+            <th>Total</th>
+            <th>Percentage</th>
+          </tr>
+        </thead>
+        <tbody class="text-center">
+          {% for r in records %}
+          <tr>
+            <td>{{ r.roll_number }}</td>
+            <td>{{ r.student_name }}</td>
+            <td>{{ r.present_count or 0 }}</td>
+            <td>{{ r.total_classes }}</td>
+            <td>
+              {% set percent = (r.present_count or 0) / r.total_classes * 100 %}
+              {{ percent | round(1) }}%
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="alert alert-warning text-center">No attendance records found for this subject.</div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+      <a href="{{ url_for('faculty_subjects') }}" class="btn btn-secondary">← Back to Subjects</a>
+    </div>
+  </div>
+
+  {% include 'toast.html' %}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

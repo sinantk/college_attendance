@@ -1,16 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Your Subjects</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .subject-card {
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 768px) {
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+  </style>
 </head>
-<body>
-  <h2>Subjects You Added</h2>
-  <ul>
+<body class="bg-light" style="min-height: 100vh;">
+
+  <div class="container py-4">
+    <h3 class="text-center mb-4">📚 Subjects You Added</h3>
+
     {% for subject in subjects %}
-      <li>{{ subject.name }} ({{ subject.code }}) – {{ subject.semester }} {{ subject.branch }}</li>
+      <div class="card shadow-sm subject-card">
+        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center">
+          <div class="text-center text-md-start">
+  <h5 class="card-title mb-1">{{ subject.name }} ({{ subject.code }})</h5>
+  <p class="card-text text-muted mb-2">Semester: {{ subject.semester }} | Branch: {{ subject.branch }}</p>
+</div>
+
+          <div class="d-flex gap-2">
+            <!-- View Attendance Button -->
+            <a href="{{ url_for('view_attendance_detail_faculty', subject_id=subject.id) }}" class="btn btn-outline-primary btn-sm">
+              📊 View Attendance
+            </a>
+            <!-- Delete Button with JS Confirm -->
+            <form method="POST" action="{{ url_for('delete_subject', subject_id=subject.id) }}" onsubmit="return confirm('Are you sure you want to delete this subject?');">
+              <button type="submit" class="btn btn-outline-danger btn-sm">🗑️ Delete</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-warning text-center">No subjects added yet.</div>
     {% endfor %}
-  </ul>
-  <br><a href="{{ url_for('add_subject') }}">➕ Add Another Subject</a>
-  <br><a href="{{ url_for('faculty_dashboard') }}">← Back to Dashboard</a>
+
+    <div class="text-center mt-4">
+      <a href="{{ url_for('add_subject') }}" class="btn btn-success">➕ Add Another Subject</a><br><br>
+      <a href="{{ url_for('faculty_dashboard') }}" class="btn btn-link">← Back to Dashboard</a>
+    </div>
+  </div>
+
+  {% include 'toast.html' %}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
