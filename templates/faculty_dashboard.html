@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Faculty Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+  <div class="container mt-5">
+    <h2 class="text-center mb-4">👨‍🏫 Faculty Dashboard – {{ name }}</h2>
+    
+    <div class="list-group">
+      <a href="{{ url_for('add_subject') }}" class="list-group-item list-group-item-action">➕ Add Subject</a>
+      <a href="{{ url_for('faculty_subjects') }}" class="list-group-item list-group-item-action">📚 View Subjects</a>
+      <a href="{{ url_for('mark_attendance_select_subject') }}" class="list-group-item list-group-item-action">🕒 Mark Attendance</a>
+      <a href="{{ url_for('logout') }}" class="list-group-item list-group-item-action text-danger">🚪 Logout</a>
+    </div>
+  </div>
+{% include 'toast.html' %}
+
+</body>
+</html>

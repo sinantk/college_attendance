@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Attendance Detail{% endblock %}
+
+{% block content %}
+<h3>📅 Attendance Details for {{ subject.name }} ({{ subject.code }})</h3>
+
+<table class="table table-bordered mt-4">
+  <thead class="table-light">
+    <tr>
+      <th>Date</th>
+      <th>Hour</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in records %}
+    <tr>
+      <td>{{ record.date }}</td>
+      <td>{{ record.hour }}</td>
+      <td>{% if record.present %}✅ Present{% else %}❌ Absent{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3" class="text-center text-muted">No attendance data.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary mt-3">← Back to Dashboard</a>
+{% endblock %}

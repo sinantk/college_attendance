@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Your Subjects</title>
+</head>
+<body>
+  <h2>Subjects You Added</h2>
+  <ul>
+    {% for subject in subjects %}
+      <li>{{ subject.name }} ({{ subject.code }}) – {{ subject.semester }} {{ subject.branch }}</li>
+    {% endfor %}
+  </ul>
+  <br><a href="{{ url_for('add_subject') }}">➕ Add Another Subject</a>
+  <br><a href="{{ url_for('faculty_dashboard') }}">← Back to Dashboard</a>
+</body>
+</html>
