@@ -2,28 +2,47 @@
 {% block title %}Attendance Detail{% endblock %}
 
 {% block content %}
-<h3>📅 Attendance Details for {{ subject.name }} ({{ subject.code }})</h3>
+<div class="container py-4" style="max-width: 650px;">
+  <div class="card shadow p-4 rounded-4">
+    <h4 class="text-center mb-3">📅 Attendance Details</h4>
+    <p class="text-center text-muted mb-2">
+      <strong>{{ subject.name }}</strong> ({{ subject.code }})
+    </p>
 
-<table class="table table-bordered mt-4">
-  <thead class="table-light">
-    <tr>
-      <th>Date</th>
-      <th>Hour</th>
-      <th>Status</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for record in records %}
-    <tr>
-      <td>{{ record.date }}</td>
-      <td>{{ record.hour }}</td>
-      <td>{% if record.present %}✅ Present{% else %}❌ Absent{% endif %}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="3" class="text-center text-muted">No attendance data.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+    <div class="table-responsive">
+      <table class="table table-bordered mt-3 text-center">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Hour</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records %}
+          <tr>
+            <td>{{ record.date }}</td>
+            <td>{{ record.hour }}</td>
+            <td>
+              {% if record.present %}
+                ✅ Present
+              {% else %}
+                ❌ Absent
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="text-center text-muted">No attendance data.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-<a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary mt-3">← Back to Dashboard</a>
+    <div class="d-grid mt-3">
+      <a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
 {% endblock %}

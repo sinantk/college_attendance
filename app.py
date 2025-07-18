@@ -62,27 +62,33 @@ def register_student():
     if request.method == 'POST':
         name = request.form['name']
         email = request.form['email']
-        password = hash_password(request.form['password'])
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
         semester = request.form['semester']
         branch = request.form['branch']
         roll_number = request.form['roll_number']
 
+        if password != confirm_password:
+            flash("❌ Passwords do not match", "danger")
+            return redirect(request.url)
+
+        hashed = hash_password(password)
+
+        db = get_db()
         try:
-            db = get_db()
             db.execute('''
                 INSERT INTO users (name, email, password, role, semester, branch, roll_number)
                 VALUES (?, ?, ?, 'student', ?, ?, ?)
-            ''', (name, email, password, semester, branch, roll_number))
+            ''', (name, email, hashed, semester, branch, roll_number))
             db.commit()
-            db.close()
-            flash('✅ Student registered successfully!', 'success')
-            return redirect(url_for('login'))
+            flash("✅ Student registered successfully", "success")
+            return redirect(url_for('home'))
         except sqlite3.IntegrityError:
-            flash('⚠️ Email already exists. Please use another.', 'danger')
-            db.close()  # ✅ Important: always close DB
-            return render_template('student_register.html')
+            flash("⚠️ Email already exists. Please use another.", "warning")
+            return redirect(request.url)
 
     return render_template('student_register.html')
+
 
 
 
@@ -91,24 +97,30 @@ def register_faculty():
     if request.method == 'POST':
         name = request.form['name']
         email = request.form['email']
-        password = hash_password(request.form['password'])
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
 
+        if password != confirm_password:
+            flash("❌ Passwords do not match", "danger")
+            return redirect(request.url)
+
+        hashed = hash_password(password)
+
+        db = get_db()
         try:
-            db = get_db()
             db.execute('''
                 INSERT INTO users (name, email, password, role)
                 VALUES (?, ?, ?, 'faculty')
-            ''', (name, email, password))
+            ''', (name, email, hashed))
             db.commit()
-            db.close()
-            flash('✅ Faculty registered successfully!', 'success')
-            return redirect(url_for('login'))
+            flash("✅ Faculty registered successfully", "success")
+            return redirect(url_for('home'))
         except sqlite3.IntegrityError:
-            flash('⚠️ Email already exists. Please use another.', 'danger')
-            db.close()  # ✅ Always close DB
-            return render_template('faculty_register.html')
+            flash("⚠️ Email already exists. Please use another.", "warning")
+            return redirect(request.url)
 
     return render_template('faculty_register.html')
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -403,6 +415,74 @@ def delete_subject(subject_id):
     db.commit()
     flash("Subject deleted successfully", "success")
     return redirect(url_for('faculty_subjects'))
+# Admin Login
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = hash_password(request.form['password'])
+
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', 
+                          (email, password)).fetchone()
+
+        if user:
+            session['user_id'] = user['id']
+            session['name'] = user['name']
+            session['role'] = user['role']
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash("Invalid admin credentials", "danger")
+
+    return render_template('admin_login.html')
+
+# Middleware
+def admin_only():
+    if session.get('role') != 'admin':
+        flash("Access denied", "danger")
+        return redirect(url_for('home'))
+# Admin Dashboard
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    admin_only()
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin/users')
+def admin_users():
+    admin_only()
+    users = get_db().execute('SELECT * FROM users').fetchall()
+    return render_template('admin_users.html', users=users)
+
+@app.route('/admin/subjects')
+def admin_subjects():
+    admin_only()
+    subjects = get_db().execute('SELECT * FROM subjects').fetchall()
+    return render_template('admin_subjects.html', subjects=subjects)
+
+@app.route('/admin/attendance')
+def admin_attendance():
+    admin_only()
+    attendance = get_db().execute('SELECT * FROM attendance').fetchall()
+    return render_template('admin_attendance.html', attendance=attendance)
+@app.route('/create-admin')
+def create_admin():
+    db = get_db()
+    try:
+        db.execute('''
+            INSERT INTO users (name, email, password, role)
+            VALUES (?, ?, ?, ?)
+        ''', ('Admin', 'admin@gmail.com', hash_password('password'), 'admin'))
+        db.commit()
+        return "✅ Admin user created successfully!"
+    except sqlite3.IntegrityError:
+        return "⚠️ Admin user already exists!"
+@app.route('/delete-admin')
+def delete_admin():
+    db = get_db()
+    db.execute("DELETE FROM users WHERE role = 'admin'")
+    db.commit()
+    return "🗑️ All admin users deleted."
+
 
 # 4. Place app.run() at the END
 if __name__ == '__main__':

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Manage Users{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h4 class="mb-4 text-center">👥 All Registered Users</h4>
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover text-center">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Branch</th>
+          <th>Semester</th>
+          <th>Roll No</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.role }}</td>
+          <td>{{ user.branch or '-' }}</td>
+          <td>{{ user.semester or '-' }}</td>
+          <td>{{ user.roll_number or '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

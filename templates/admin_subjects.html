@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Manage Subjects{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h4 class="mb-4 text-center">📘 All Subjects</h4>
+  <div class="table-responsive">
+    <table class="table table-striped text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>Name</th>
+          <th>Code</th>
+          <th>Semester</th>
+          <th>Branch</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in subjects %}
+        <tr>
+          <td>{{ sub.name }}</td>
+          <td>{{ sub.code }}</td>
+          <td>{{ sub.semester }}</td>
+          <td>{{ sub.branch }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+

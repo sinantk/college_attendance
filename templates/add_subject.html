@@ -19,10 +19,30 @@
           <input type="text" name="code" class="form-control" placeholder="Subject Code" required>
         </div>
         <div class="mb-3">
-          <input type="text" name="semester" class="form-control" placeholder="Semester (e.g. S3)" required>
+          <select name="semester" class="form-control mb-3" required>
+  <option value="">-- Select Semester --</option>
+  <option>S1</option>
+  <option>S2</option>
+  <option>S3</option>
+  <option>S4</option>
+  <option>S5</option>
+  <option>S6</option>
+  <option>S7</option>
+  <option>S8</option>
+</select>
+
+
+
         </div>
         <div class="mb-3">
-          <input type="text" name="branch" class="form-control" placeholder="Branch (e.g. CSE)" required>
+          <select name="branch" class="form-control mb-3" required>
+  <option value="">-- Select Branch --</option>
+  <option>CSE</option>
+  <option>ECE</option>
+  <option>EEE</option>
+  <option>ME</option>
+  <option>CE</option>
+</select>
         </div>
         <button type="submit" class="btn btn-primary w-100">➕ Add Subject</button>
       </form>

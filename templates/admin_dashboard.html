@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="card shadow p-4">
+    <h3 class="text-center mb-4">🛠️ Admin Dashboard – {{ session['name'] }}</h3>
+    <div class="list-group">
+      <a href="{{ url_for('admin_users') }}" class="list-group-item list-group-item-action">👥 Manage Users</a>
+      <a href="{{ url_for('admin_subjects') }}" class="list-group-item list-group-item-action">📘 Manage Subjects</a>
+      <a href="{{ url_for('admin_attendance') }}" class="list-group-item list-group-item-action">📊 View Attendance</a>
+      <a href="{{ url_for('logout') }}" class="list-group-item list-group-item-action text-danger">🚪 Logout</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
