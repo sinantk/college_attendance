@@ -41,7 +41,12 @@
     </div>
 
     <div class="d-grid mt-3">
-      <a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+      {% if session['role'] == 'admin' %}
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mt-3">← Back to Dashboard</a>
+{% else %}
+  <a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary mt-3">← Back to Dashboard</a>
+{% endif %}
+
     </div>
   </div>
 </div>

@@ -8,9 +8,10 @@ app.secret_key = 'your-secret-key'
 
 # 2. DB functions
 def get_db():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('database.db', timeout=10, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -56,6 +57,20 @@ init_db()
 @app.route('/')
 def home():
     return render_template('home.html')
+def load_whitelist(filename):
+    try:
+        with open(filename, 'r') as f:
+            return [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        return []
+
+
+def is_whitelisted(email, role):
+    filename = 'student_whitelist.txt' if role == 'student' else 'faculty_whitelist.txt'
+    whitelist = load_whitelist(filename)
+    return any(email == w or email.endswith(w) for w in whitelist)
+
+
 
 @app.route('/register/student', methods=['GET', 'POST'])
 def register_student():
@@ -67,6 +82,12 @@ def register_student():
         semester = request.form['semester']
         branch = request.form['branch']
         roll_number = request.form['roll_number']
+        
+        if not is_whitelisted(email, 'student'):
+         flash('❌ This email is not authorized to register as student.', 'danger')
+         return redirect(request.url)
+
+
 
         if password != confirm_password:
             flash("❌ Passwords do not match", "danger")
@@ -100,6 +121,12 @@ def register_faculty():
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
+        if not is_whitelisted(email, 'faculty'):
+         flash('❌ This email is not authorized to register as faculty.', 'danger')
+         return redirect(request.url)
+
+
+        
         if password != confirm_password:
             flash("❌ Passwords do not match", "danger")
             return redirect(request.url)
@@ -358,21 +385,22 @@ def add_cache_control(response):
     return response
 @app.route('/student/attendance/<int:subject_id>')
 def view_attendance_detail(subject_id):
-    if 'user_id' not in session or session.get('role') != 'student':
-        flash("⚠️ Please log in first.", "warning")
-        return redirect(url_for('login'))
+    student_id = session.get('user_id')
+
+    # Allow admin to pass student_id manually
+    if is_admin() and request.args.get('student_id'):
+        student_id = request.args.get('student_id')
 
     db = get_db()
-    student_id = session['user_id']
-
-    subject = db.execute('SELECT * FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+    subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
     records = db.execute('''
-        SELECT date, hour, present FROM attendance
-        WHERE student_id = ? AND subject_id = ?
+        SELECT * FROM attendance
+        WHERE subject_id = ? AND student_id = ?
         ORDER BY date, hour
-    ''', (student_id, subject_id)).fetchall()
+    ''', (subject_id, student_id)).fetchall()
 
     return render_template('student_attendance_detail.html', subject=subject, records=records)
+
 @app.route('/faculty/subject/<int:subject_id>/attendance')
 def view_attendance_detail_faculty(subject_id):
     # Ensure logged in faculty
@@ -437,51 +465,178 @@ def admin_login():
     return render_template('admin_login.html')
 
 # Middleware
-def admin_only():
-    if session.get('role') != 'admin':
-        flash("Access denied", "danger")
-        return redirect(url_for('home'))
-# Admin Dashboard
-@app.route('/admin/dashboard')
-def admin_dashboard():
-    admin_only()
-    return render_template('admin_dashboard.html')
 
-@app.route('/admin/users')
+
+from flask import abort
+
+# Helper to restrict access to admin
+def is_admin():
+    return session.get('role') == 'admin'
+
+@app.route('/admin/users', methods=['GET', 'POST'])
 def admin_users():
-    admin_only()
-    users = get_db().execute('SELECT * FROM users').fetchall()
-    return render_template('admin_users.html', users=users)
+    if not is_admin(): abort(403)
+    db = get_db()
 
-@app.route('/admin/subjects')
+    filters = {}
+    query = "SELECT * FROM users WHERE 1=1"
+    params = []
+
+    if request.method == 'POST':
+        role = request.form.get('role')
+        semester = request.form.get('semester')
+        branch = request.form.get('branch')
+
+        if role:
+            query += " AND role = ?"
+            params.append(role)
+            filters['role'] = role
+        if semester:
+            query += " AND semester = ?"
+            params.append(semester)
+            filters['semester'] = semester
+        if branch:
+            query += " AND branch = ?"
+            params.append(branch)
+            filters['branch'] = branch
+
+    users = db.execute(query, params).fetchall()
+    return render_template("admin_users.html", users=users, filters=filters)
+
+
+@app.route('/admin/subjects', methods=['GET', 'POST'])
 def admin_subjects():
-    admin_only()
-    subjects = get_db().execute('SELECT * FROM subjects').fetchall()
-    return render_template('admin_subjects.html', subjects=subjects)
+    if not is_admin():
+        abort(403)
+
+    filters = {'keyword': '', 'semester': '', 'branch': ''}
+    query = "SELECT * FROM subjects WHERE 1=1"
+    args = []
+
+    if request.method == 'POST':
+        filters['keyword'] = request.form.get('keyword', '').strip()
+        filters['semester'] = request.form.get('semester', '')
+        filters['branch'] = request.form.get('branch', '')
+
+        if filters['keyword']:
+            query += " AND (name LIKE ? OR code LIKE ?)"
+            args.extend([f"%{filters['keyword']}%", f"%{filters['keyword']}%"])
+        if filters['semester']:
+            query += " AND semester = ?"
+            args.append(filters['semester'])
+        if filters['branch']:
+            query += " AND branch = ?"
+            args.append(filters['branch'])
+
+    db = get_db()
+    subjects = db.execute(query, args).fetchall()
+    return render_template('admin_subjects.html', subjects=subjects, filters=filters)
 
 @app.route('/admin/attendance')
 def admin_attendance():
-    admin_only()
-    attendance = get_db().execute('SELECT * FROM attendance').fetchall()
-    return render_template('admin_attendance.html', attendance=attendance)
-@app.route('/create-admin')
-def create_admin():
+    if not is_admin(): abort(403)
     db = get_db()
-    try:
-        db.execute('''
-            INSERT INTO users (name, email, password, role)
-            VALUES (?, ?, ?, ?)
-        ''', ('Admin', 'admin@gmail.com', hash_password('password'), 'admin'))
-        db.commit()
-        return "✅ Admin user created successfully!"
-    except sqlite3.IntegrityError:
-        return "⚠️ Admin user already exists!"
-@app.route('/delete-admin')
-def delete_admin():
+    records = db.execute('''
+        SELECT a.date, a.hour, a.present,
+               u.name as student_name, u.roll_number,
+               s.name as subject_name, s.code
+        FROM attendance a
+        JOIN users u ON a.student_id = u.id
+        JOIN subjects s ON a.subject_id = s.id
+        ORDER BY date DESC, hour DESC
+    ''').fetchall()
+    return render_template('admin_attendance.html', records=records)
+
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    if not is_admin(): abort(403)
     db = get_db()
-    db.execute("DELETE FROM users WHERE role = 'admin'")
+    db.execute('DELETE FROM users WHERE id = ?', (user_id,))
     db.commit()
-    return "🗑️ All admin users deleted."
+    flash('User deleted.', 'info')
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/delete_subject/<int:subject_id>', methods=['POST'])
+def delete_subject_admin(subject_id):
+    if not is_admin(): abort(403)
+    db = get_db()
+    db.execute('DELETE FROM subjects WHERE id = ?', (subject_id,))
+    db.commit()
+    flash('Subject deleted.', 'info')
+    return redirect(url_for('admin_subjects'))
+
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if session.get('role') != 'admin':
+        return redirect(url_for('home'))  # or show 403
+    return render_template('admin_dashboard.html')
+@app.route('/admin/student-attendance', methods=['GET', 'POST'])
+def admin_view_student_attendance():
+    if not is_admin(): abort(403)
+    db = get_db()
+    records = None
+    student = None
+
+    if request.method == 'POST':
+        semester = request.form.get('semester')
+        branch = request.form.get('branch')
+        roll_number = request.form.get('roll_number')
+
+        student = db.execute(
+            "SELECT * FROM users WHERE role='student' AND semester=? AND branch=? AND roll_number=?",
+            (semester, branch, roll_number)
+        ).fetchone()
+
+        if student:
+            records = db.execute('''
+                SELECT s.id AS subject_id, s.name AS subject_name, s.code AS subject_code,
+                       COUNT(a.id) AS total,
+                       SUM(a.present) AS present
+                FROM attendance a
+                JOIN subjects s ON a.subject_id = s.id
+                WHERE a.student_id = ?
+                GROUP BY s.id
+            ''', (student['id'],)).fetchall()
+
+    return render_template('admin_view_student_attendance.html', student=student, records=records)
+
+
+def save_whitelist(filename, emails):
+    with open(filename, 'w') as f:
+        for email in emails:
+            f.write(email.strip() + '\n')
+
+@app.route('/admin/whitelist/<role>', methods=['GET', 'POST'])
+def manage_whitelist(role):
+    if not is_admin():
+        abort(403)
+
+    if role not in ['student', 'faculty']:
+        abort(400)
+
+    filename = f"{role}_whitelist.txt"
+    emails = load_whitelist(filename)
+    message = ''
+
+    if request.method == 'POST':
+        new_emails = request.form.get('emails', '')
+        updated_list = new_emails.strip().splitlines()
+        save_whitelist(filename, updated_list)
+        message = f'✅ {role.capitalize()} whitelist updated successfully.'
+        emails = updated_list
+
+    return render_template('admin_whitelist.html', emails="\n".join(emails), message=message, role=role)
+
+
+@app.route('/admin/whitelist-options')
+def manage_whitelist_options():
+    if not is_admin():
+        abort(403)
+    return render_template('manage_whitelist_options.html')
+
+
 
 
 # 4. Place app.run() at the END

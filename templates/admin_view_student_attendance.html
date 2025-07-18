@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Student Attendance View{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+  <div class="card p-4 shadow rounded-4">
+    <h4 class="text-center mb-4">🎓 View Student Attendance</h4>
+
+    <form method="POST" class="mb-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label>Semester:</label>
+          <select name="semester" class="form-select" required>
+            <option value="">Select</option>
+            <option>S1</option><option>S2</option><option>S3</option>
+            <option>S4</option><option>S5</option><option>S6</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label>Branch:</label>
+          <select name="branch" class="form-select" required>
+            <option value="">Select</option>
+            <option>CSE</option><option>ECE</option>
+            <option>EEE</option><option>ME</option><option>CE</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label>Roll Number:</label>
+          <input type="text" name="roll_number" class="form-control" required>
+        </div>
+      </div>
+      <div class="mt-3 d-grid">
+        <button type="submit" class="btn btn-primary">🔍 View Attendance</button>
+      </div>
+    </form>
+
+    {% if student %}
+    <h5 class="text-center mt-4">📋 Attendance – {{ student.name }} ({{ student.roll_number }})</h5>
+
+    <div class="table-responsive mt-3">
+      <table class="table table-striped text-center align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Subject</th>
+            <th>Code</th>
+            <th>Present</th>
+            <th>Total</th>
+            <th>%</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td>{{ r.subject_name }}</td>
+            <td>{{ r.subject_code }}</td>
+            <td>{{ r.present or 0 }}</td>
+            <td>{{ r.total }}</td>
+            <td>
+              {% if r.total %}
+                {{ ((r.present or 0) / r.total * 100) | round(2) }}%
+              {% else %}0%
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('view_attendance_detail', subject_id=r.subject_id, student_id=student.id) }}"
+                 class="btn btn-sm btn-outline-primary">
+                📅 View Details
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% elif student is not none %}
+      <div class="alert alert-warning text-center mt-3">No attendance records available.</div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

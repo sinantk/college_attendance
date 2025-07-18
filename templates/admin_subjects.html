@@ -1,30 +1,73 @@
 {% extends 'base.html' %}
-{% block title %}Manage Subjects{% endblock %}
+{% block title %}Admin – Subjects{% endblock %}
+
 {% block content %}
 <div class="container py-4">
-  <h4 class="mb-4 text-center">📘 All Subjects</h4>
-  <div class="table-responsive">
-    <table class="table table-striped text-center">
-      <thead class="table-dark">
-        <tr>
-          <th>Name</th>
-          <th>Code</th>
-          <th>Semester</th>
-          <th>Branch</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for sub in subjects %}
-        <tr>
-          <td>{{ sub.name }}</td>
-          <td>{{ sub.code }}</td>
-          <td>{{ sub.semester }}</td>
-          <td>{{ sub.branch }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="card shadow p-4">
+    <h4 class="text-center mb-3">📚 All Subjects</h4>
+
+    <div class="table-responsive"><form method="POST" class="row g-3 mb-4">
+  <!-- Search keyword -->
+  <div class="col-md-4">
+    <input type="text" name="keyword" class="form-control" placeholder="Search by name or code" value="{{ filters.keyword or '' }}">
+  </div>
+
+  <!-- Semester dropdown -->
+  <div class="col-md-3">
+    <select name="semester" class="form-select">
+      <option value="">All Semesters</option>
+      {% for s in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'] %}
+        <option value="{{ s }}" {% if filters.semester == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Branch dropdown -->
+  <div class="col-md-3">
+    <select name="branch" class="form-select">
+      <option value="">All Branches</option>
+      {% for b in ['CSE', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
+        <option value="{{ b }}" {% if filters.branch == b %}selected{% endif %}>{{ b }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Search button -->
+  <div class="col-md-2">
+    <button class="btn btn-primary w-100" type="submit">🔍 Search</button>
+  </div>
+</form>
+
+
+      <table class="table table-striped align-middle text-center">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th><th>Name</th><th>Code</th><th>Semester</th><th>Branch</th><th>Faculty ID</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in subjects %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.name }}</td>
+            <td>{{ s.code }}</td>
+            <td>{{ s.semester }}</td>
+            <td>{{ s.branch }}</td>
+            <td>{{ s.faculty_id }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('delete_subject_admin', subject_id=s.id) }}" onsubmit="return confirm('Delete this subject?');">
+                <button class="btn btn-sm btn-outline-danger">🗑</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="text-center mt-4">
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
   </div>
 </div>
 {% endblock %}
-

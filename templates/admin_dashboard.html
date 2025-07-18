@@ -1,14 +1,71 @@
 {% extends 'base.html' %}
 {% block title %}Admin Dashboard{% endblock %}
+
 {% block content %}
-<div class="container py-5">
-  <div class="card shadow p-4">
-    <h3 class="text-center mb-4">🛠️ Admin Dashboard – {{ session['name'] }}</h3>
-    <div class="list-group">
-      <a href="{{ url_for('admin_users') }}" class="list-group-item list-group-item-action">👥 Manage Users</a>
-      <a href="{{ url_for('admin_subjects') }}" class="list-group-item list-group-item-action">📘 Manage Subjects</a>
-      <a href="{{ url_for('admin_attendance') }}" class="list-group-item list-group-item-action">📊 View Attendance</a>
-      <a href="{{ url_for('logout') }}" class="list-group-item list-group-item-action text-danger">🚪 Logout</a>
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center px-2">
+  <div class="container py-4">
+    <div class="card shadow rounded-4 p-4">
+      <h3 class="text-center mb-4">🛠️ Admin Dashboard</h3>
+
+      <div class="row g-3">
+        <!-- Users -->
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-sm border-0">
+            <div class="card-body text-center">
+              <h5 class="card-title">👥 Users</h5>
+              <p class="text-muted">Manage student and faculty accounts.</p>
+              <a href="{{ url_for('admin_users') }}" class="btn btn-outline-primary w-100">Manage Users</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subjects -->
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-sm border-0">
+            <div class="card-body text-center">
+              <h5 class="card-title">📚 Subjects</h5>
+              <p class="text-muted">View and manage faculty-added subjects.</p>
+              <a href="{{ url_for('admin_subjects') }}" class="btn btn-outline-success w-100">View Subjects</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendance -->
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-sm border-0">
+            <div class="card-body text-center">
+              <h5 class="card-title">📊 Attendance</h5>
+              <p class="text-muted">Check attendance summary by student.</p>
+              <a href="{{ url_for('admin_view_student_attendance') }}" class="btn btn-outline-warning w-100">View Attendance</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manage Whitelist -->
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-sm border-0">
+            <div class="card-body text-center">
+              <h5 class="card-title">🔐 Manage Whitelist</h5>
+              <p class="text-muted">Control who can register.</p>
+              <a href="{{ url_for('manage_whitelist_options') }}" class="btn btn-outline-dark w-100">Manage Whitelist</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logout (centered) -->
+        <div class="col-12">
+          <div class="d-flex justify-content-center">
+            <div class="card shadow-sm border-0" style="width: 100%; max-width: 500px;">
+              <div class="card-body text-center">
+                <h5 class="card-title text-danger">🚪 Logout</h5>
+                <p class="text-muted">Exit admin panel.</p>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger px-5">Logout</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 </div>

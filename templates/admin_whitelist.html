@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Admin – Email Whitelist{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 700px;">
+  <div class="card shadow p-4">
+    <h4 class="mb-3 text-center">🛡 Manage Email Whitelist</h4>
+    {% if message %}
+      <div class="alert alert-success">{{ message }}</div>
+    {% endif %}
+    <form method="POST">
+      <div class="mb-3">
+        <label for="emails" class="form-label">One entry per line (exact email or domain with '@')</label>
+        <textarea name="emails" id="emails" rows="10" class="form-control">{{ emails }}</textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary ms-2">← Back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
