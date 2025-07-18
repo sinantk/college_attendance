@@ -637,8 +637,12 @@ def manage_whitelist_options():
     return render_template('manage_whitelist_options.html')
 
 
+@app.route('/ping')
+def ping():
+    return "pong"
 
 
 # 4. Place app.run() at the END
 if __name__ == '__main__':
     app.run(debug=True)
+
