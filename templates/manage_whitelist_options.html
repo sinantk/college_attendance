@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Manage Whitelist{% endblock %}
+
+{% block content %}
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center px-3">
+  <div class="container" style="max-width: 500px;">
+    <div class="card shadow rounded-4 p-4">
+      <h4 class="text-center mb-3">🔐 Manage Whitelist</h4>
+      <p class="text-center text-muted">Select which whitelist to manage:</p>
+
+      <div class="d-grid gap-3 mt-3">
+        <a href="{{ url_for('manage_whitelist', role='student') }}" class="btn btn-outline-primary">
+          👨‍🎓 Student Whitelist
+        </a>
+        <a href="{{ url_for('manage_whitelist', role='faculty') }}" class="btn btn-outline-secondary">
+          👨‍🏫 Faculty Whitelist
+        </a>
+      </div>
+
+      <div class="text-center mt-4">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-link">← Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
