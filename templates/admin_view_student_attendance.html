@@ -1,9 +1,24 @@
 {% extends 'base.html' %}
 {% block title %}Student Attendance View{% endblock %}
+
 {% block content %}
-<div class="container center-wrapper">
+<style>
+  .table-scroll-x {
+    overflow-x: auto;
+  }
+
+  .center-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+</style>
+
+<div class="container-fluid center-wrapper p-0 m-0">
   <div class="card shadow p-4 rounded-4 w-100" style="max-width: 900px;">
     <h4 class="text-center mb-4">🎓 View Student Attendance</h4>
+
     <form method="POST" class="mb-4">
       <div class="row g-3">
         <div class="col-md-4">
@@ -34,6 +49,7 @@
 
     {% if student %}
     <h5 class="text-center mt-4">📋 Attendance – {{ student.name }} ({{ student.roll_number }})</h5>
+
     <div class="table-scroll-x mt-3">
       <table class="table table-striped text-center align-middle">
         <thead class="table-dark">
@@ -73,7 +89,7 @@
       <div class="alert alert-warning text-center mt-3">No attendance records available.</div>
     {% endif %}
 
-    <div class="text-center mt-1">
+    <div class="text-center mt-3">
       <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
   </div>
