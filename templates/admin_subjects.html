@@ -1,48 +1,40 @@
 {% extends 'base.html' %}
 {% block title %}Admin – Subjects{% endblock %}
-
 {% block content %}
-<div class="container py-4">
-  <div class="card shadow p-4">
+<div class="container center-wrapper">
+  <div class="card shadow p-4 w-100" style="max-width: 1100px;">
     <h4 class="text-center mb-3">📚 All Subjects</h4>
+    <form method="POST" class="row g-3 mb-4">
+      <div class="col-md-4">
+        <input type="text" name="keyword" class="form-control" placeholder="Search by name or code" value="{{ filters.keyword or '' }}">
+      </div>
+      <div class="col-md-3">
+        <select name="semester" class="form-select">
+          <option value="">All Semesters</option>
+          {% for s in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'] %}
+            <option value="{{ s }}" {% if filters.semester == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="branch" class="form-select">
+          <option value="">All Branches</option>
+          {% for b in ['CSE-A', 'CSE-B', 'CSE-C', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
+            <option value="{{ b }}" {% if filters.branch == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit">🔍 Search</button>
+      </div>
+    </form>
 
-    <div class="table-responsive"><form method="POST" class="row g-3 mb-4">
-  <!-- Search keyword -->
-  <div class="col-md-4">
-    <input type="text" name="keyword" class="form-control" placeholder="Search by name or code" value="{{ filters.keyword or '' }}">
-  </div>
-
-  <!-- Semester dropdown -->
-  <div class="col-md-3">
-    <select name="semester" class="form-select">
-      <option value="">All Semesters</option>
-      {% for s in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'] %}
-        <option value="{{ s }}" {% if filters.semester == s %}selected{% endif %}>{{ s }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <!-- Branch dropdown -->
-  <div class="col-md-3">
-    <select name="branch" class="form-select">
-      <option value="">All Branches</option>
-      {% for b in ['CSE-A', 'CSE-B', 'CSE-C', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
-        <option value="{{ b }}" {% if filters.branch == b %}selected{% endif %}>{{ b }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <!-- Search button -->
-  <div class="col-md-2">
-    <button class="btn btn-primary w-100" type="submit">🔍 Search</button>
-  </div>
-</form>
-
-
+    <div class="table-scroll-x">
       <table class="table table-striped align-middle text-center">
         <thead class="table-dark">
           <tr>
-            <th>ID</th><th>Name</th><th>Code</th><th>Semester</th><th>Branch</th><th>Faculty ID</th><th>Action</th>
+            <th>ID</th><th>Name</th><th>Code</th><th>Semester</th>
+            <th>Branch</th><th>Faculty ID</th><th>Action</th>
           </tr>
         </thead>
         <tbody>

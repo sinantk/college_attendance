@@ -1,44 +1,44 @@
 {% extends 'base.html' %}
 {% block title %}Admin – Users{% endblock %}
 {% block content %}
-<div class="container py-4">
-  <div class="card shadow p-4">
+<div class="container center-wrapper">
+  <div class="card shadow p-4 w-100" style="max-width: 1200px;">
     <h4 class="text-center mb-3">👥 All Users</h4>
-    <div class="table-responsive"><form method="POST" class="row g-3 mb-4">
-  <div class="col-md-3">
-    <select name="role" class="form-select">
-      <option value="">All Roles</option>
-      <option value="student" {% if filters.role == 'student' %}selected{% endif %}>Student</option>
-      <option value="faculty" {% if filters.role == 'faculty' %}selected{% endif %}>Faculty</option>
-    </select>
-  </div>
-  <div class="col-md-3">
-  <select name="semester" class="form-select">
-    <option value="">All Semesters</option>
-    {% for s in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'] %}
-      <option value="{{ s }}" {% if filters.semester == s %}selected{% endif %}>{{ s }}</option>
-    {% endfor %}
-  </select>
-</div>
+    <form method="POST" class="row g-3 mb-4">
+      <div class="col-md-3">
+        <select name="role" class="form-select">
+          <option value="">All Roles</option>
+          <option value="student" {% if filters.role == 'student' %}selected{% endif %}>Student</option>
+          <option value="faculty" {% if filters.role == 'faculty' %}selected{% endif %}>Faculty</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="semester" class="form-select">
+          <option value="">All Semesters</option>
+          {% for s in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'] %}
+            <option value="{{ s }}" {% if filters.semester == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="branch" class="form-select">
+          <option value="">All Branches</option>
+          {% for b in ['CSE-A', 'CSE-B', 'CSE-C', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
+            <option value="{{ b }}" {% if filters.branch == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3 text-end">
+        <button type="submit" class="btn btn-primary w-100">🔍 Filter</button>
+      </div>
+    </form>
 
-<div class="col-md-3">
-  <select name="branch" class="form-select">
-    <option value="">All Branches</option>
-    {% for b in ['CSE-A', 'CSE-B', 'CSE-C', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
-      <option value="{{ b }}" {% if filters.branch == b %}selected{% endif %}>{{ b }}</option>
-    {% endfor %}
-  </select>
-</div>
-
-  <div class="col-md-3 text-end">
-    <button type="submit" class="btn btn-primary w-100">🔍 Filter</button>
-  </div>
-</form>
-
+    <div class="table-scroll-x">
       <table class="table table-striped align-middle text-center">
         <thead class="table-dark">
           <tr>
-            <th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Semester</th><th>Branch</th><th>Roll No</th><th>Action</th>
+            <th>ID</th><th>Name</th><th>Email</th><th>Role</th>
+            <th>Semester</th><th>Branch</th><th>Roll No</th><th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -61,7 +61,10 @@
           </tr>
           {% endfor %}
         </tbody>
-      </table><div class="text-center mt-4">
+      </table>
+    </div>
+
+    <div class="text-center mt-4">
       <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
   </div>
