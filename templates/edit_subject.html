@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Edit Subject{% endblock %}
+
+{% block content %}
+<div class="container py-4 center-wrapper">
+  <div class="card shadow p-4 w-100" style="max-width: 600px;">
+    <h4 class="text-center mb-4">✏️ Edit Subject</h4>
+    <form method="POST">
+      <div class="mb-3">
+        <label>Subject Name</label>
+        <input type="text" name="name" class="form-control" value="{{ subject.name }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label>Subject Code</label>
+        <input type="text" name="code" class="form-control" value="{{ subject.code }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label>Semester</label>
+        <select name="semester" class="form-select" required>
+          {% for s in ['S1','S2','S3','S4','S5','S6','S7','S8'] %}
+            <option value="{{ s }}" {% if subject.semester == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label>Branch</label>
+        <select name="branch" class="form-select" required>
+          {% for b in ['CSE-A','CSE-B','CSE-C','ECE','EEE','ME','CE','IT'] %}
+            <option value="{{ b }}" {% if subject.branch == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label>Faculty ID (optional)</label>
+        <input type="number" name="faculty_id" class="form-control" value="{{ subject.faculty_id or '' }}">
+      </div>
+
+      <div class="d-grid mt-3">
+        <button type="submit" class="btn btn-success">💾 Save Changes</button>
+        <a href="{{ url_for('admin_subjects') }}" class="btn btn-secondary mt-2">← Back</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

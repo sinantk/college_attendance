@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Edit User{% endblock %}
+
+{% block content %}
+<div class="container py-4 center-wrapper">
+  <div class="card shadow p-4 w-100" style="max-width: 600px;">
+    <h4 class="text-center mb-4">✏️ Edit User</h4>
+    <form method="POST">
+      <div class="mb-3">
+        <label>Name</label>
+        <input type="text" name="name" class="form-control" value="{{ user.name }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label>Email</label>
+        <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label>Role</label>
+        <select name="role" class="form-select" id="roleSelect" required>
+          <option value="student" {% if user.role == 'student' %}selected{% endif %}>Student</option>
+          <option value="faculty" {% if user.role == 'faculty' %}selected{% endif %}>Faculty</option>
+          <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+        </select>
+      </div>
+
+      <!-- Student-only fields -->
+      <div id="studentFields" {% if user.role != 'student' %}style="display: none;"{% endif %}>
+        <div class="mb-3">
+          <label>Semester</label>
+          <select name="semester" class="form-select">
+            <option value="">-- Select Semester --</option>
+            {% for s in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'] %}
+              <option value="{{ s }}" {% if user.semester == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label>Branch</label>
+          <select name="branch" class="form-select">
+            <option value="">-- Select Branch --</option>
+            {% for b in ['CSE-A', 'CSE-B', 'CSE-C', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
+              <option value="{{ b }}" {% if user.branch == b %}selected{% endif %}>{{ b }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label>Roll Number</label>
+          <input type="number" name="roll_number" class="form-control" value="{{ user.roll_number or '' }}" min="1" step="1">
+        </div>
+      </div>
+
+      <div class="d-grid mt-3">
+        <button type="submit" class="btn btn-success">💾 Save Changes</button>
+        <a href="{{ url_for('admin_users') }}" class="btn btn-secondary mt-2">← Back</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Toggle student-only fields based on role
+  document.addEventListener('DOMContentLoaded', function () {
+    const roleSelect = document.getElementById('roleSelect');
+    const studentFields = document.getElementById('studentFields');
+
+    function toggleFields() {
+      studentFields.style.display = roleSelect.value === 'student' ? 'block' : 'none';
+    }
+
+    roleSelect.addEventListener('change', toggleFields);
+    toggleFields(); // Initial check on load
+  });
+</script>
+{% endblock %}

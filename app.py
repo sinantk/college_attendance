@@ -474,6 +474,7 @@ def admin_login():
             session['user_id'] = user['id']
             session['name'] = user['name']
             session['role'] = user['role']
+            flash('✅ Admin login successful!', 'success')
             return redirect(url_for('admin_dashboard'))
         else:
             flash("Invalid admin credentials", "danger")
@@ -640,16 +641,15 @@ def manage_whitelist(role):
 
     filename = f"{role}_whitelist.txt"
     emails = load_whitelist(filename)
-    message = ''
 
     if request.method == 'POST':
         new_emails = request.form.get('emails', '')
         updated_list = new_emails.strip().splitlines()
         save_whitelist(filename, updated_list)
-        message = f'✅ {role.capitalize()} whitelist updated successfully.'
-        emails = updated_list
+        flash(f'✅ {role.capitalize()} whitelist updated successfully.', 'success')
+        return redirect(url_for('manage_whitelist', role=role))  # Redirect to avoid resubmission
 
-    return render_template('admin_whitelist.html', emails="\n".join(emails), message=message, role=role)
+    return render_template('admin_whitelist.html', emails="\n".join(emails), role=role)
 
 
 @app.route('/admin/whitelist-options')
@@ -663,6 +663,71 @@ def manage_whitelist_options():
 def ping():
     return "pong"
 
+@app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
+def edit_user(user_id):
+    if not is_admin():
+        abort(403)
+
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+    if not user:
+        flash("User not found", "danger")
+        return redirect(url_for('admin_users'))
+
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        role = request.form['role']
+
+        # Handle student-specific fields
+        if role == 'student':
+            semester = request.form.get('semester') or None
+            branch = request.form.get('branch') or None
+            roll_number = request.form.get('roll_number') or None
+        else:
+            semester = branch = roll_number = None
+
+        db.execute('''
+            UPDATE users 
+            SET name=?, email=?, role=?, semester=?, branch=?, roll_number=? 
+            WHERE id=?
+        ''', (name, email, role, semester, branch, roll_number, user_id))
+        db.commit()
+
+        flash("✅ User updated successfully", "success")
+        return redirect(url_for('admin_users'))
+
+    return render_template('edit_user.html', user=user)
+
+@app.route('/admin/edit_subject/<int:subject_id>', methods=['GET', 'POST'])
+def edit_subject(subject_id):
+    if not is_admin():
+        abort(403)
+
+    db = get_db()
+    subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
+
+    if not subject:
+        flash("Subject not found", "danger")
+        return redirect(url_for('admin_subjects'))
+
+    if request.method == 'POST':
+        name = request.form['name']
+        code = request.form['code']
+        semester = request.form['semester']
+        branch = request.form['branch']
+        faculty_id = request.form.get('faculty_id') or None
+
+        db.execute('''
+            UPDATE subjects SET name=?, code=?, semester=?, branch=?, faculty_id=? WHERE id=?
+        ''', (name, code, semester, branch, faculty_id, subject_id))
+        db.commit()
+
+        flash("✅ Subject updated successfully", "success")
+        return redirect(url_for('admin_subjects'))
+
+    return render_template('edit_subject.html', subject=subject)
 
 # 4. Place app.run() at the END
 if __name__ == '__main__':
