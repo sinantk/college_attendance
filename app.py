@@ -2,6 +2,18 @@
 from flask import Flask, request, render_template, redirect, session, url_for, flash
 import sqlite3
 import hashlib
+from contextlib import contextmanager
+
+@contextmanager
+def get_db():
+    conn = sqlite3.connect('database.db', timeout=10, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
+
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -82,12 +94,10 @@ def register_student():
         semester = request.form['semester']
         branch = request.form['branch']
         roll_number = request.form['roll_number']
-        
+
         if not is_whitelisted(email, 'student'):
-         flash('❌ This email is not authorized to register as student.', 'danger')
-         return redirect(request.url)
-
-
+            flash('❌ This email is not authorized to register as student.', 'danger')
+            return redirect(request.url)
 
         if password != confirm_password:
             flash("❌ Passwords do not match", "danger")
@@ -95,13 +105,12 @@ def register_student():
 
         hashed = hash_password(password)
 
-        db = get_db()
         try:
-            db.execute('''
-                INSERT INTO users (name, email, password, role, semester, branch, roll_number)
-                VALUES (?, ?, ?, 'student', ?, ?, ?)
-            ''', (name, email, hashed, semester, branch, roll_number))
-            db.commit()
+            with get_db() as db:
+                db.execute('''
+                    INSERT INTO users (name, email, password, role, semester, branch, roll_number)
+                    VALUES (?, ?, ?, 'student', ?, ?, ?)
+                ''', (name, email, hashed, semester, branch, roll_number))
             flash("✅ Student registered successfully", "success")
             return redirect(url_for('home'))
         except sqlite3.IntegrityError:
@@ -109,8 +118,6 @@ def register_student():
             return redirect(request.url)
 
     return render_template('student_register.html')
-
-
 
 
 @app.route('/register/faculty', methods=['GET', 'POST'])
@@ -122,24 +129,21 @@ def register_faculty():
         confirm_password = request.form['confirm_password']
 
         if not is_whitelisted(email, 'faculty'):
-         flash('❌ This email is not authorized to register as faculty.', 'danger')
-         return redirect(request.url)
+            flash('❌ This email is not authorized to register as faculty.', 'danger')
+            return redirect(request.url)
 
-
-        
         if password != confirm_password:
             flash("❌ Passwords do not match", "danger")
             return redirect(request.url)
 
         hashed = hash_password(password)
 
-        db = get_db()
         try:
-            db.execute('''
-                INSERT INTO users (name, email, password, role)
-                VALUES (?, ?, ?, 'faculty')
-            ''', (name, email, hashed))
-            db.commit()
+            with get_db() as db:
+                db.execute('''
+                    INSERT INTO users (name, email, password, role)
+                    VALUES (?, ?, ?, 'faculty')
+                ''', (name, email, hashed))
             flash("✅ Faculty registered successfully", "success")
             return redirect(url_for('home'))
         except sqlite3.IntegrityError:
@@ -147,6 +151,7 @@ def register_faculty():
             return redirect(request.url)
 
     return render_template('faculty_register.html')
+
 
 
 
@@ -160,19 +165,25 @@ def login():
         user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', (email, password)).fetchone()
 
         if user:
+            if user['role'] == 'admin':
+                flash('⚠️ Admins must log in from the Admin Login page.', 'warning')
+                return redirect(url_for('login'))
+
+            # proceed with normal user login
             session['user_id'] = user['id']
             session['role'] = user['role']
             session['name'] = user['name']
             flash('✅ Login successful!', 'success')
+
             if user['role'] == 'faculty':
                 return redirect(url_for('faculty_dashboard'))
             else:
                 return redirect(url_for('student_dashboard'))
         else:
             flash('❌ Invalid email or password.', 'danger')
-            return render_template('login.html')  # 🟢 Re-render without redirect
 
     return render_template('login.html')
+
 
 
 @app.route('/faculty/dashboard')
@@ -242,16 +253,17 @@ def add_subject():
         branch = request.form['branch']
         faculty_id = session['user_id']
 
-        db = get_db()
-        db.execute('''
-            INSERT INTO subjects (name, code, semester, branch, faculty_id)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (name, code, semester, branch, faculty_id))
-        db.commit()
+        with get_db() as db:
+            db.execute('''
+                INSERT INTO subjects (name, code, semester, branch, faculty_id)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (name, code, semester, branch, faculty_id))
+
         flash('📘 Subject added successfully!', 'success')
         return redirect(url_for('faculty_dashboard'))
 
     return render_template('add_subject.html')
+
 
 @app.route('/faculty/subjects')
 def faculty_subjects():
@@ -309,26 +321,26 @@ def confirm_attendance():
         return redirect(url_for('faculty_dashboard'))
 
     data = session.pop('attendance_temp')
-    db = get_db()
 
-    students = db.execute('''
-        SELECT * FROM users WHERE role = 'student' AND semester = (
-            SELECT semester FROM subjects WHERE id = ?
-        ) AND branch = (
-            SELECT branch FROM subjects WHERE id = ?
-        )
-    ''', (data['subject_id'], data['subject_id'])).fetchall()
+    with get_db() as db:
+        students = db.execute('''
+            SELECT * FROM users WHERE role = 'student' AND semester = (
+                SELECT semester FROM subjects WHERE id = ?
+            ) AND branch = (
+                SELECT branch FROM subjects WHERE id = ?
+            )
+        ''', (data['subject_id'], data['subject_id'])).fetchall()
 
-    for student in students:
-        present = data['status'].get(str(student['id']), 0)
-        db.execute('''
-            INSERT INTO attendance (student_id, subject_id, date, hour, present)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
+        for student in students:
+            present = data['status'].get(str(student['id']), 0)
+            db.execute('''
+                INSERT INTO attendance (student_id, subject_id, date, hour, present)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
 
-    db.commit()
     flash("✅ Attendance successfully saved!", "success")
     return redirect(url_for('faculty_dashboard'))
+
 
 
 @app.route('/faculty/mark_attendance/<int:subject_id>/<date>/<int:hour>', methods=['GET', 'POST'])
@@ -438,11 +450,15 @@ def view_attendance_detail_faculty(subject_id):
 
 @app.route('/faculty/delete_subject/<int:subject_id>', methods=['POST'])
 def delete_subject(subject_id):
-    db = get_db()
-    db.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
-    db.commit()
+    if session.get('role') != 'faculty':
+        abort(403)
+
+    with get_db() as db:
+        db.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
+
     flash("Subject deleted successfully", "success")
     return redirect(url_for('faculty_subjects'))
+
 # Admin Login
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -550,21 +566,27 @@ def admin_attendance():
 
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
-    if not is_admin(): abort(403)
-    db = get_db()
-    db.execute('DELETE FROM users WHERE id = ?', (user_id,))
-    db.commit()
+    if not is_admin():
+        abort(403)
+    
+    with get_db() as db:
+        db.execute('DELETE FROM users WHERE id = ?', (user_id,))
+
     flash('User deleted.', 'info')
     return redirect(url_for('admin_users'))
 
+
 @app.route('/admin/delete_subject/<int:subject_id>', methods=['POST'])
 def delete_subject_admin(subject_id):
-    if not is_admin(): abort(403)
-    db = get_db()
-    db.execute('DELETE FROM subjects WHERE id = ?', (subject_id,))
-    db.commit()
+    if not is_admin():
+        abort(403)
+    
+    with get_db() as db:
+        db.execute('DELETE FROM subjects WHERE id = ?', (subject_id,))
+
     flash('Subject deleted.', 'info')
     return redirect(url_for('admin_subjects'))
+
 
 
 @app.route('/admin/dashboard')

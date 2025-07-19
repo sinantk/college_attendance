@@ -37,17 +37,20 @@
         <div class="mb-3">
           <select name="branch" class="form-control mb-3" required>
   <option value="">-- Select Branch --</option>
-  <option>CSE</option>
-  <option>ECE</option>
-  <option>EEE</option>
-  <option>ME</option>
-  <option>CE</option>
+  <option value="CSE-A">CSE-A</option>
+  <option value="CSE-B">CSE-B</option>
+  <option value="CSE-C">CSE-C</option>
+  <option value="ECE">ECE</option>
+  <option value="EEE">EEE</option>
+  <option value="ME">ME</option>
+  <option value="CE">CE</option>
+
 </select>
         </div>
         <button type="submit" class="btn btn-primary w-100">➕ Add Subject</button>
       </form>
       <div class="text-center mt-3">
-        <a href="{{ url_for('faculty_dashboard') }}">← Back to Dashboard</a>
+        <a href="{{ url_for('faculty_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
       </div>
     </div>
   </div>

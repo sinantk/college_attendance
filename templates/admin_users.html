@@ -24,7 +24,7 @@
 <div class="col-md-3">
   <select name="branch" class="form-select">
     <option value="">All Branches</option>
-    {% for b in ['CSE', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
+    {% for b in ['CSE-A', 'CSE-B', 'CSE-C', 'ECE', 'EEE', 'ME', 'CE', 'IT'] %}
       <option value="{{ b }}" {% if filters.branch == b %}selected{% endif %}>{{ b }}</option>
     {% endfor %}
   </select>
