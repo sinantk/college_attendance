@@ -11,38 +11,41 @@
         <input type="text" name="name" class="form-control mb-3" placeholder="Full Name" required>
         <input type="email" name="email" class="form-control mb-3" placeholder="Email" required>
         <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
-        <input type="password" name="confirm_password" class="form-control mb-3" placeholder="Confirm Password" required>
+        <input type="password" name="confirm_password" class="form-control mb-3" placeholder="Confirm Password"
+          required>
         <select name="semester" class="form-control mb-3" required>
-  <option value="">-- Select Semester --</option>
-  <option>S1</option>
-  <option>S2</option>
-  <option>S3</option>
-  <option>S4</option>
-  <option>S5</option>
-  <option>S6</option>
-  <option>S7</option>
-  <option>S8</option>
-</select>
+          <option value="">-- Select Semester --</option>
+          <option>S1</option>
+          <option>S2</option>
+          <option>S3</option>
+          <option>S4</option>
+          <option>S5</option>
+          <option>S6</option>
+          <option>S7</option>
+          <option>S8</option>
+        </select>
 
-<select name="branch" class="form-control mb-3" required>
-  <option value="">-- Select Branch --</option>
-  <option value="CSE-A">CSE-A</option>
-  <option value="CSE-B">CSE-B</option>
-  <option value="CSE-C">CSE-C</option>
-  <option value="ECE">ECE</option>
-  <option value="EEE">EEE</option>
-  <option value="ME">ME</option>
-  <option value="CE">CE</option>
+        <select name="branch" class="form-control mb-3" required>
+          <option value="">-- Select Branch --</option>
+          <option value="CSE-A">CSE-A</option>
+          <option value="CSE-B">CSE-B</option>
+          <option value="CSE-C">CSE-C</option>
+          <option value="ECE">ECE</option>
+          <option value="EEE">EEE</option>
+          <option value="ME">ME</option>
+          <option value="CE">CE</option>
 
-</select>
+        </select>
 
-        <input type="text" name="roll_number" class="form-control mb-4" placeholder="Roll Number" required>
+        <input type="number" name="roll_number" class="form-control mb-4"
+                         placeholder="Roll Number" required min="1" step="1">
+
         <button type="submit" class="btn btn-primary w-100">Register</button>
       </form>
 
       <div class="text-center mt-4">
-      <a href="{{ url_for('home') }}" class="btn btn-secondary">← Back to Home</a>
-    </div>
+        <a href="{{ url_for('home') }}" class="btn btn-secondary">← Back to Home</a>
+      </div>
     </div>
   </div>
 </div>
