@@ -742,8 +742,8 @@ def edit_subject(subject_id):
 @app.route('/setup_admin')
 def setup_admin():
     import hashlib
-    email = "admin@example.com"
-    password = "admin123"  # You should change this immediately after login
+    email = "admin@gmail.com"
+    password = "password"  # You should change this immediately after login
     hashed = hashlib.sha256(password.encode()).hexdigest()
 
     with get_db() as db:
