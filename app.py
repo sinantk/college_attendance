@@ -454,10 +454,15 @@ def delete_subject(subject_id):
         abort(403)
 
     with get_db() as db:
+        # First delete related attendance records
+        db.execute("DELETE FROM attendance WHERE subject_id = ?", (subject_id,))
+        
+        # Then delete the subject itself
         db.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
 
-    flash("Subject deleted successfully", "success")
+    flash("Subject and related attendance deleted successfully", "success")
     return redirect(url_for('faculty_subjects'))
+
 
 # Admin Login
 @app.route('/admin/login', methods=['GET', 'POST'])
@@ -581,12 +586,17 @@ def delete_user(user_id):
 def delete_subject_admin(subject_id):
     if not is_admin():
         abort(403)
-    
+
     with get_db() as db:
+        # First delete attendance records linked to the subject
+        db.execute('DELETE FROM attendance WHERE subject_id = ?', (subject_id,))
+        
+        # Then delete the subject itself
         db.execute('DELETE FROM subjects WHERE id = ?', (subject_id,))
 
-    flash('Subject deleted.', 'info')
+    flash('🗑️ Subject and related attendance deleted.', 'info')
     return redirect(url_for('admin_subjects'))
+
 
 
 
