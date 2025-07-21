@@ -739,24 +739,7 @@ def edit_subject(subject_id):
 
     return render_template('edit_subject.html', subject=subject)
 
-@app.route('/setup_admin')
-def setup_admin():
-    import hashlib
-    email = "admin@gmail.com"
-    password = "password"  # You should change this immediately after login
-    hashed = hashlib.sha256(password.encode()).hexdigest()
 
-    with get_db() as db:
-        existing = db.execute("SELECT * FROM users WHERE email = ? AND role = 'admin'", (email,)).fetchone()
-        if existing:
-            return "⚠️ Admin user already exists."
-
-        db.execute('''
-            INSERT INTO users (name, email, password, role)
-            VALUES (?, ?, ?, 'admin')
-        ''', ('Admin', email, hashed))
-
-    return f"✅ Admin created: {email} / {password}. Please delete this route now!"
 
 # 4. Place app.run() at the END
 if __name__ == '__main__':
