@@ -19,11 +19,7 @@ def get_db():
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
-# 2. DB functions
-def get_db():
-    conn = sqlite3.connect('database.db', timeout=10, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+
 
 
 def hash_password(password):
@@ -171,7 +167,7 @@ def login():
         email = request.form['email']
         password = hash_password(request.form['password'])
 
-        db = get_db()
+    with get_db() as db:
         user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', (email, password)).fetchone()
 
         if user:
@@ -209,12 +205,12 @@ def student_dashboard():
         return redirect(url_for('login'))
 
     student_id = session['user_id']
-    db = get_db()
-    
-    # Get all subjects for this student
-    subjects = db.execute('''
-        SELECT * FROM subjects WHERE semester = (
-            SELECT semester FROM users WHERE id = ?
+    with get_db() as db:
+
+        # Get all subjects for this student
+        subjects = db.execute('''
+            SELECT * FROM subjects WHERE semester = (
+                SELECT semester FROM users WHERE id = ?
         ) AND branch = (
             SELECT branch FROM users WHERE id = ?
         )
@@ -280,8 +276,8 @@ def faculty_subjects():
     if session.get('role') != 'faculty':
         return redirect(url_for('login'))
 
-    db = get_db()
-    subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = ?', (session['user_id'],)).fetchall()
+    with get_db() as db:
+        subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = ?', (session['user_id'],)).fetchall()
     return render_template('faculty_subjects.html', subjects=subjects)
 @app.route('/logout')
 def logout():
@@ -481,7 +477,7 @@ def admin_login():
         email = request.form['email']
         password = hash_password(request.form['password'])
 
-        db = get_db()
+    with get_db() as db:
         user = db.execute('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', 
                           (email, password)).fetchone()
 
@@ -508,11 +504,10 @@ def is_admin():
 @app.route('/admin/users', methods=['GET', 'POST'])
 def admin_users():
     if not is_admin(): abort(403)
-    db = get_db()
-
-    filters = {}
-    query = "SELECT * FROM users WHERE 1=1"
-    params = []
+    with get_db() as db:
+        filters = {}
+        query = "SELECT * FROM users WHERE 1=1"
+        params = []
 
     if request.method == 'POST':
         role = request.form.get('role')
