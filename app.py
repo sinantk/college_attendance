@@ -166,8 +166,9 @@ def login():
         email = request.form['email']
         password = hash_password(request.form['password'])
 
-        db = get_db()
-        user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', (email, password)).fetchone()
+        with get_db() as db:
+         user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', (email, password)).fetchone()
+
 
         if user:
             if user['role'] == 'admin':
@@ -476,9 +477,9 @@ def admin_login():
         email = request.form['email']
         password = hash_password(request.form['password'])
 
-        db = get_db()
-        user = db.execute('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', 
-                          (email, password)).fetchone()
+        with get_db() as db:
+            user = db.execute('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', 
+                              (email, password)).fetchone()
 
         if user:
             session['user_id'] = user['id']
