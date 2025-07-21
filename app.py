@@ -409,12 +409,12 @@ def view_attendance_detail(subject_id):
     if is_admin() and request.args.get('student_id'):
         student_id = request.args.get('student_id')
 
-    db = get_db()
-    subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
-    records = db.execute('''
-        SELECT * FROM attendance
-        WHERE subject_id = ? AND student_id = ?
-        ORDER BY date, hour
+    with get_db() as db:
+        subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
+        records = db.execute('''
+            SELECT * FROM attendance
+            WHERE subject_id = ? AND student_id = ?
+            ORDER BY date, hour
     ''', (subject_id, student_id)).fetchall()
 
     return render_template('student_attendance_detail.html', subject=subject, records=records)
@@ -426,10 +426,10 @@ def view_attendance_detail_faculty(subject_id):
         flash("Unauthorized access", "danger")
         return redirect(url_for('login'))
 
-    db = get_db()
+    with get_db() as db:
 
     # Verify subject belongs to this faculty
-    subject = db.execute(
+     subject = db.execute(
         "SELECT * FROM subjects WHERE id = ? AND faculty_id = ?",
         (subject_id, session['user_id'])
     ).fetchone()
@@ -555,19 +555,19 @@ def admin_subjects():
             query += " AND branch = ?"
             args.append(filters['branch'])
 
-    db = get_db()
-    subjects = db.execute(query, args).fetchall()
+    with get_db() as db:
+        subjects = db.execute(query, args).fetchall()
     return render_template('admin_subjects.html', subjects=subjects, filters=filters)
 
 @app.route('/admin/attendance')
 def admin_attendance():
     if not is_admin(): abort(403)
-    db = get_db()
-    records = db.execute('''
-        SELECT a.date, a.hour, a.present,
-               u.name as student_name, u.roll_number,
-               s.name as subject_name, s.code
-        FROM attendance a
+    with get_db() as db:
+        records = db.execute('''
+            SELECT a.date, a.hour, a.present,
+                   u.name as student_name, u.roll_number,
+                   s.name as subject_name, s.code
+            FROM attendance a
         JOIN users u ON a.student_id = u.id
         JOIN subjects s ON a.subject_id = s.id
         ORDER BY date DESC, hour DESC
@@ -613,9 +613,9 @@ def admin_dashboard():
 @app.route('/admin/student-attendance', methods=['GET', 'POST'])
 def admin_view_student_attendance():
     if not is_admin(): abort(403)
-    db = get_db()
-    records = None
-    student = None
+    with get_db() as db:
+        records = None
+        student = None
 
     if request.method == 'POST':
         semester = request.form.get('semester')
@@ -683,8 +683,8 @@ def edit_user(user_id):
     if not is_admin():
         abort(403)
 
-    db = get_db()
-    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    with get_db() as db:
+        user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
     if not user:
         flash("User not found", "danger")
@@ -720,8 +720,8 @@ def edit_subject(subject_id):
     if not is_admin():
         abort(403)
 
-    db = get_db()
-    subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
+    with get_db() as db:
+        subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
 
     if not subject:
         flash("Subject not found", "danger")
