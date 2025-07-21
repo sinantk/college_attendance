@@ -19,6 +19,11 @@ def get_db():
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
+# 2. DB functions
+def get_db():
+    conn = sqlite3.connect('database.db', timeout=10, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def hash_password(password):
@@ -166,9 +171,8 @@ def login():
         email = request.form['email']
         password = hash_password(request.form['password'])
 
-        with get_db() as db:
-         user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', (email, password)).fetchone()
-
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', (email, password)).fetchone()
 
         if user:
             if user['role'] == 'admin':
@@ -477,9 +481,9 @@ def admin_login():
         email = request.form['email']
         password = hash_password(request.form['password'])
 
-        with get_db() as db:
-            user = db.execute('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', 
-                              (email, password)).fetchone()
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', 
+                          (email, password)).fetchone()
 
         if user:
             session['user_id'] = user['id']
