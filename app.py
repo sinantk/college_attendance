@@ -19,11 +19,6 @@ def get_db():
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
-# 2. DB functions
-def get_db():
-    conn = sqlite3.connect('database.db', timeout=10, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def hash_password(password):
