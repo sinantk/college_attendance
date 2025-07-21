@@ -1,4 +1,5 @@
 # 1. All imports and setup
+import os
 from flask import Flask, request, render_template, redirect, session, url_for, flash
 import sqlite3
 import hashlib
@@ -62,6 +63,15 @@ def init_db():
                 present INTEGER
             )
         ''')
+        admin_email = os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@example.com")
+        admin_pass = os.environ.get("DEFAULT_ADMIN_PASS", "admin123")
+        hashed = hash_password(admin_pass)
+
+        exists = db.execute("SELECT * FROM users WHERE email = ? AND role = 'admin'", (admin_email,)).fetchone()
+        if not exists:
+            db.execute("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'admin')",
+                       ("Admin", admin_email, hashed))
+            print(f"✅ Admin created: {admin_email}")
 
 init_db()
 
