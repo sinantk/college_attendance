@@ -425,9 +425,7 @@ def confirm_attendance():
 
     data = session.pop('attendance_temp')
 
-    with get_db() as conn:
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
+    with get_db() as cursor:
         cursor.execute('''
             SELECT * FROM users
             WHERE role = 'student' AND semester = (
@@ -447,10 +445,9 @@ def confirm_attendance():
                 VALUES (%s, %s, %s, %s, %s)
             ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
 
-        conn.commit()
-
     flash("✅ Attendance successfully saved!", "success")
     return redirect(url_for('faculty_dashboard'))
+
 
 
 # ----------------------
