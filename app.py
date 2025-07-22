@@ -21,7 +21,8 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def init_db():
-    with get_db() as db:
+    if not os.path.exists('database.db'):
+      with get_db() as db:
         db.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
