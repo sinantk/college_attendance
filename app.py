@@ -394,6 +394,7 @@ def confirm_attendance():
     data = session.pop('attendance_temp')
 
     with get_db() as db:
+        # Get students again
         db.execute('''
             SELECT * FROM users
             WHERE role = 'student' AND semester = (
@@ -404,16 +405,17 @@ def confirm_attendance():
         ''', (data['subject_id'], data['subject_id']))
         students = db.fetchall()
 
-    for student in students:
-        present = bool(data['status'].get(student['id'], 0))  # ✅ Cast to boolean
-        db.execute('''
-            INSERT INTO attendance (student_id, subject_id, date, hour, present)
-            VALUES (%s, %s, %s, %s, %s)
-        ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
-
+        for student in students:
+            present_int = data['status'].get(student['id'], 0)
+            present = True if present_int == 1 else False
+            db.execute('''
+                INSERT INTO attendance (student_id, subject_id, date, hour, present)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
 
     flash("✅ Attendance successfully saved!", "success")
     return redirect(url_for('faculty_dashboard'))
+
 # ----------------------
 # 🔐 Admin Login
 # ----------------------
