@@ -740,14 +740,15 @@ def view_attendance_detail_faculty(subject_id):
             return redirect(url_for('faculty_dashboard'))
 
         db.execute('''
-            SELECT u.name AS student_name, u.roll_number,
-                   COUNT(a.id) AS total_classes, SUM(a.present) AS present_count
-            FROM attendance a
-            JOIN users u ON u.id = a.student_id
-            WHERE a.subject_id = %s
-            GROUP BY a.student_id
-            ORDER BY u.roll_number
-        ''', (subject_id,))
+         SELECT u.name AS student_name, u.roll_number,
+           COUNT(a.id) AS total_classes,
+           SUM(a.present::int) AS present_count
+          FROM attendance a
+    JOIN users u ON a.student_id = u.id
+    WHERE a.subject_id = %s
+    GROUP BY u.id
+    ORDER BY u.roll_number
+''', (subject_id,))
         records = db.fetchall()
 
     return render_template('faculty_attendance_detail.html', subject=subject, records=records)
