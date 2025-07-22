@@ -248,7 +248,22 @@ def faculty_dashboard():
 def student_dashboard():
     if session.get('role') != 'student':
         return redirect(url_for('login'))
-    return render_template('student_dashboard.html', name=session['name'])
+
+    student_id = session['user_id']
+    with get_db() as db:
+        db.execute('''
+            SELECT s.id AS subject_id, s.name AS subject_name, s.code AS subject_code,
+                   COUNT(a.id) AS total_classes,
+                   SUM(a.present::int) AS present
+            FROM attendance a
+            JOIN subjects s ON a.subject_id = s.id
+            WHERE a.student_id = %s
+            GROUP BY s.id
+        ''', (student_id,))
+        records = db.fetchall()
+
+    return render_template('student_dashboard.html', name=session['name'], records=records)
+
 
 
 
@@ -394,7 +409,6 @@ def confirm_attendance():
     data = session.pop('attendance_temp')
 
     with get_db() as db:
-        # Get students again
         db.execute('''
             SELECT * FROM users
             WHERE role = 'student' AND semester = (
@@ -406,8 +420,7 @@ def confirm_attendance():
         students = db.fetchall()
 
         for student in students:
-            present_int = data['status'].get(student['id'], 0)
-            present = True if present_int == 1 else False
+            present = str(data['status'].get(student['id'], '0')) == '1'
             db.execute('''
                 INSERT INTO attendance (student_id, subject_id, date, hour, present)
                 VALUES (%s, %s, %s, %s, %s)
@@ -415,6 +428,7 @@ def confirm_attendance():
 
     flash("✅ Attendance successfully saved!", "success")
     return redirect(url_for('faculty_dashboard'))
+
 
 # ----------------------
 # 🔐 Admin Login
@@ -652,7 +666,7 @@ def admin_view_student_attendance():
                 db.execute('''
                     SELECT s.id AS subject_id, s.name AS subject_name, s.code AS subject_code,
                            COUNT(a.id) AS total,
-                           SUM(a.present) AS present
+                           SUM(a.present::int) AS present
                     FROM attendance a
                     JOIN subjects s ON a.subject_id = s.id
                     WHERE a.student_id = %s
