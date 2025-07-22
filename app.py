@@ -374,7 +374,6 @@ def mark_attendance(subject_id, date, hour):
     with get_db() as db:
         db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,))
         subject = db.fetchone()
-
         db.execute('''
             SELECT * FROM users
             WHERE role = 'student' AND semester = %s AND branch = %s
@@ -382,13 +381,14 @@ def mark_attendance(subject_id, date, hour):
         students = db.fetchall()
 
     if request.method == 'POST':
+        print("📝 request.form:", request.form)  # ← Debug line
         absentees = []
         present_status = {}
+
         for student in students:
-            # Checkbox: if exists in form, it's present
-            present = 1 if f"present_{student['id']}" in request.form else 0
-            present_status[student['id']] = present
-            if not present:
+            is_present = f"present_{student['id']}" in request.form
+            present_status[student['id']] = 1 if is_present else 0
+            if not is_present:
                 absentees.append(student['roll_number'])
 
         session['attendance_temp'] = {
@@ -433,8 +433,9 @@ def confirm_attendance():
         students = db.fetchall()
 
         for student in students:
-            # Convert to boolean: 1 => True, 0 => False
-            present = True if data['status'].get(student['id'], 0) == 1 else False
+            present = str(data['status'].get(student['id'], '0')) == '1'
+            print(f"✅ Saving for {student['name']} ({student['id']}): {present}")
+
             db.execute('''
                 INSERT INTO attendance (student_id, subject_id, date, hour, present)
                 VALUES (%s, %s, %s, %s, %s)
@@ -797,6 +798,12 @@ def ping():
 def add_cache_control(response):
     response.headers['Cache-Control'] = 'no-store'
     return response
+@app.route('/debug/attendance')
+def debug_attendance_table():
+    with get_db() as db:
+        db.execute("SELECT * FROM attendance ORDER BY id DESC LIMIT 20")
+        records = db.fetchall()
+    return render_template('debug_attendance.html', records=records)
 
 
 # -----------------------------------------
