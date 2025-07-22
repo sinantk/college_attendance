@@ -3,15 +3,23 @@ import sqlite3
 from flask import Flask, request, render_template, redirect, session, url_for, flash, abort
 from contextlib import contextmanager
 import hashlib
+import psycopg2
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect('database.db', timeout=10, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(
+        host=os.environ.get("DB_HOST"),
+        port=os.environ.get("DB_PORT"),
+        dbname=os.environ.get("DB_NAME"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD")
+    )
+    cur = conn.cursor()
     try:
-        yield conn
+        yield cur
         conn.commit()
     finally:
+        cur.close()
         conn.close()
 
 app = Flask(__name__)
@@ -21,11 +29,10 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def init_db():
-    if not os.path.exists('database.db'):
-      with get_db() as db:
+    with get_db() as db:
         db.execute('''
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT,
                 email TEXT UNIQUE,
                 password TEXT,
@@ -35,9 +42,10 @@ def init_db():
                 roll_number TEXT
             )
         ''')
+
         db.execute('''
             CREATE TABLE IF NOT EXISTS subjects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT,
                 code TEXT,
                 semester TEXT,
@@ -45,43 +53,57 @@ def init_db():
                 faculty_id INTEGER
             )
         ''')
+
         db.execute('''
             CREATE TABLE IF NOT EXISTS attendance (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 student_id INTEGER,
                 subject_id INTEGER,
-                date TEXT,
+                date DATE,
                 hour INTEGER,
-                present INTEGER
+                present BOOLEAN
             )
         ''')
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS whitelist (
+               id SERIAL PRIMARY KEY,
+              email TEXT NOT NULL,
+              role TEXT CHECK(role IN ('student', 'faculty'))
+    )
+''')
 
         # Admin auto-creation
+        from hashlib import sha256
+        import os
+
         admin_email = os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@example.com")
         admin_pass = os.environ.get("DEFAULT_ADMIN_PASS", "admin123")
-        hashed = hash_password(admin_pass)
-        exists = db.execute("SELECT * FROM users WHERE email = ? AND role = 'admin'", (admin_email,)).fetchone()
-        if not exists:
-            db.execute("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'admin')",
-                       ("Admin", admin_email, hashed))
-            print(f"✅ Admin created: {admin_email}")
+        hashed = sha256(admin_pass.encode()).hexdigest()
 
+        db.execute("SELECT * FROM users WHERE email = %s AND role = 'admin'", (admin_email,))
+        exists = db.fetchone()
+
+        if not exists:
+            db.execute('''
+                INSERT INTO users (name, email, password, role)
+                VALUES (%s, %s, %s, 'admin')
+            ''', ("Admin", admin_email, hashed))
+            print(f"✅ Admin created: {admin_email}")
 init_db()
 @app.route('/')
 def home():
     return render_template('home.html')
 
-def load_whitelist(filename):
-    try:
-        with open(filename, 'r') as f:
-            return [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        return []
+def load_whitelist(role):
+    with get_db() as db:
+        db.execute("SELECT email FROM whitelist WHERE role = %s", (role,))
+        return [row[0] for row in db.fetchall()]
+
 
 def is_whitelisted(email, role):
-    filename = 'student_whitelist.txt' if role == 'student' else 'faculty_whitelist.txt'
-    whitelist = load_whitelist(filename)
+    whitelist = load_whitelist(role)
     return any(email == w or email.endswith(w) for w in whitelist)
+
 @app.route('/register/student', methods=['GET', 'POST'])
 def register_student():
     if request.method == 'POST':
@@ -586,10 +608,12 @@ def admin_view_student_attendance():
     return render_template('admin_view_student_attendance.html', student=student, records=records)
 
 
-def save_whitelist(filename, emails):
-    with open(filename, 'w') as f:
+def save_whitelist(role, emails):
+    with get_db() as db:
+        db.execute("DELETE FROM whitelist WHERE role = %s", (role,))
         for email in emails:
-            f.write(email.strip() + '\n')
+            db.execute("INSERT INTO whitelist (email, role) VALUES (%s, %s)", (email.strip(), role))
+
 
 
 @app.route('/admin/whitelist/<role>', methods=['GET', 'POST'])
@@ -600,17 +624,17 @@ def manage_whitelist(role):
     if role not in ['student', 'faculty']:
         abort(400)
 
-    filename = f"{role}_whitelist.txt"
-    emails = load_whitelist(filename)
+    emails = load_whitelist(role)
 
     if request.method == 'POST':
         new_emails = request.form.get('emails', '')
         updated_list = new_emails.strip().splitlines()
-        save_whitelist(filename, updated_list)
+        save_whitelist(role, updated_list)
         flash(f'✅ {role.capitalize()} whitelist updated successfully.', 'success')
         return redirect(url_for('manage_whitelist', role=role))
 
     return render_template('admin_whitelist.html', emails="\n".join(emails), role=role)
+
 
 
 @app.route('/admin/whitelist-options')
