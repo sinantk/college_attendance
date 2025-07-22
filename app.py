@@ -10,10 +10,10 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
 
 # 📦 Load .env variables
-load_dotenv()
-print("🔧 ENV LOADED:")
-print("DB_HOST:", os.getenv("DB_HOST"))
-print("DB_PORT:", os.getenv("DB_PORT"))
+if os.getenv("FLASK_ENV") != "production":
+    from dotenv import load_dotenv
+    load_dotenv()
+
 
 # 🛠️ Flask app
 app = Flask(__name__)
