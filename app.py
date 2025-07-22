@@ -433,7 +433,8 @@ def confirm_attendance():
         students = db.fetchall()
 
         for student in students:
-            present = str(data['status'].get(student['id'], '0')) == '1'
+            present = data['status'].get(student['id'], 0) == 1
+
             print(f"✅ Saving for {student['name']} ({student['id']}): {present}")
 
             db.execute('''
