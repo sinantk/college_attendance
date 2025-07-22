@@ -374,6 +374,7 @@ def mark_attendance(subject_id, date, hour):
     with get_db() as db:
         db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,))
         subject = db.fetchone()
+
         db.execute('''
             SELECT * FROM users
             WHERE role = 'student' AND semester = %s AND branch = %s
@@ -381,14 +382,15 @@ def mark_attendance(subject_id, date, hour):
         students = db.fetchall()
 
     if request.method == 'POST':
-        print("📝 request.form:", request.form)  # ← Debug line
         absentees = []
         present_status = {}
 
         for student in students:
-            is_present = f"present_{student['id']}" in request.form
-            present_status[student['id']] = 1 if is_present else 0
-            if not is_present:
+            # FORCE student ID to int, ensure keys match in confirm step
+            student_id = int(student['id'])
+            present = 1 if f"present_{student_id}" in request.form else 0
+            present_status[student_id] = present
+            if not present:
                 absentees.append(student['roll_number'])
 
         session['attendance_temp'] = {
@@ -407,6 +409,7 @@ def mark_attendance(subject_id, date, hour):
         )
 
     return render_template('mark_attendance.html', students=students, subject=subject, date=date, hour=hour)
+
 
 
 
