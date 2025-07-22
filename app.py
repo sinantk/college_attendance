@@ -389,7 +389,8 @@ def mark_attendance(subject_id, date, hour):
             # FORCE student ID to int, ensure keys match in confirm step
             student_id = int(student['id'])
             present = 1 if f"present_{student_id}" in request.form else 0
-            present_status[student_id] = present
+            present_status[str(student['id'])] = present
+
             if not present:
                 absentees.append(student['roll_number'])
 
@@ -435,15 +436,14 @@ def confirm_attendance():
         ''', (data['subject_id'], data['subject_id']))
         students = db.fetchall()
 
-        for student in students:
-            present = data['status'].get(student['id'], 0) == 1
+    for student in students:
+        present = data['status'].get(str(student['id']), 0) == 1
+        print(f"✅ Saving for {student['name']} ({student['id']}): {present} Raw Status: {data['status']}")
+        db.execute('''
+            INSERT INTO attendance (student_id, subject_id, date, hour, present)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
 
-            print(f"✅ Saving for {student['name']} ({student['id']}): {present}")
-
-            db.execute('''
-                INSERT INTO attendance (student_id, subject_id, date, hour, present)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
 
     flash("✅ Attendance successfully saved!", "success")
     return redirect(url_for('faculty_dashboard'))
