@@ -5,27 +5,34 @@ import psycopg2.extras
 from flask import Flask, request, render_template, redirect, session, url_for, flash, abort
 from contextlib import contextmanager
 from datetime import date
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
-# PostgreSQL DB connection context
+# 🔁 SQLAlchemy Engine for PostgreSQL with Connection Pooling
+engine = create_engine(
+    f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
+    pool_size=10,
+    max_overflow=5,
+    pool_timeout=30,
+    pool_recycle=1800
+)
+
+db_session = scoped_session(sessionmaker(bind=engine))
+
 @contextmanager
 def get_db():
-    conn = psycopg2.connect(
-        host=os.environ.get("DB_HOST"),
-        port=os.environ.get("DB_PORT"),
-        dbname=os.environ.get("DB_NAME"),
-        user=os.environ.get("DB_USER"),
-        password=os.environ.get("DB_PASSWORD")
-    )
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = engine.raw_connection()
     try:
-        yield cur
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        yield cursor
         conn.commit()
     finally:
-        cur.close()
+        cursor.close()
         conn.close()
+
 
 # Password hashing
 def hash_password(password):
