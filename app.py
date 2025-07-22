@@ -1,10 +1,15 @@
 import os
-import sqlite3
-from flask import Flask, request, render_template, redirect, session, url_for, flash, abort
-from contextlib import contextmanager
 import hashlib
 import psycopg2
+import psycopg2.extras
+from flask import Flask, request, render_template, redirect, session, url_for, flash, abort
+from contextlib import contextmanager
+from datetime import date
 
+app = Flask(__name__)
+app.secret_key = 'your-secret-key'
+
+# PostgreSQL DB connection context
 @contextmanager
 def get_db():
     conn = psycopg2.connect(
@@ -14,7 +19,7 @@ def get_db():
         user=os.environ.get("DB_USER"),
         password=os.environ.get("DB_PASSWORD")
     )
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         yield cur
         conn.commit()
@@ -22,12 +27,11 @@ def get_db():
         cur.close()
         conn.close()
 
-app = Flask(__name__)
-app.secret_key = 'your-secret-key'
-
+# Password hashing
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+# Initialize tables
 def init_db():
     with get_db() as db:
         db.execute('''
@@ -42,7 +46,6 @@ def init_db():
                 roll_number TEXT
             )
         ''')
-
         db.execute('''
             CREATE TABLE IF NOT EXISTS subjects (
                 id SERIAL PRIMARY KEY,
@@ -53,7 +56,6 @@ def init_db():
                 faculty_id INTEGER
             )
         ''')
-
         db.execute('''
             CREATE TABLE IF NOT EXISTS attendance (
                 id SERIAL PRIMARY KEY,
@@ -67,43 +69,53 @@ def init_db():
         db.execute('''
             CREATE TABLE IF NOT EXISTS whitelist (
                id SERIAL PRIMARY KEY,
-              email TEXT NOT NULL,
-              role TEXT CHECK(role IN ('student', 'faculty'))
-    )
-''')
+               email TEXT NOT NULL,
+               role TEXT CHECK(role IN ('student', 'faculty'))
+        )
+        ''')
 
-        # Admin auto-creation
-        from hashlib import sha256
-        import os
-
+        # Default admin setup
         admin_email = os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@example.com")
         admin_pass = os.environ.get("DEFAULT_ADMIN_PASS", "admin123")
-        hashed = sha256(admin_pass.encode()).hexdigest()
+        hashed = hash_password(admin_pass)
 
-        db.execute("SELECT * FROM users WHERE email = %s AND role = 'admin'", (admin_email,))
+        db.execute("SELECT * FROM users WHERE email = %s AND role = %s", (admin_email, 'admin'))
         exists = db.fetchone()
-
         if not exists:
             db.execute('''
                 INSERT INTO users (name, email, password, role)
-                VALUES (%s, %s, %s, 'admin')
-            ''', ("Admin", admin_email, hashed))
+                VALUES (%s, %s, %s, %s)
+            ''', ("Admin", admin_email, hashed, 'admin'))
             print(f"✅ Admin created: {admin_email}")
+
 init_db()
+
+# 🏠 Home route
 @app.route('/')
 def home():
     return render_template('home.html')
 
+# ---------------------
+# 🔐 WHITELIST HELPERS
+# ---------------------
 def load_whitelist(role):
     with get_db() as db:
         db.execute("SELECT email FROM whitelist WHERE role = %s", (role,))
-        return [row[0] for row in db.fetchall()]
-
+        return [row['email'] for row in db.fetchall()]
 
 def is_whitelisted(email, role):
     whitelist = load_whitelist(role)
     return any(email == w or email.endswith(w) for w in whitelist)
 
+def save_whitelist(role, emails):
+    with get_db() as db:
+        db.execute("DELETE FROM whitelist WHERE role = %s", (role,))
+        for email in emails:
+            db.execute("INSERT INTO whitelist (email, role) VALUES (%s, %s)", (email.strip(), role))
+
+# ----------------------
+# 👨‍🎓 Student Registration
+# ----------------------
 @app.route('/register/student', methods=['GET', 'POST'])
 def register_student():
     if request.method == 'POST':
@@ -133,13 +145,16 @@ def register_student():
                 ''', (name, email, hashed, semester, branch, roll_number))
             flash("✅ Student registered successfully", "success")
             return redirect(url_for('home'))
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
             flash("⚠️ Email already exists. Please use another.", "warning")
             return redirect(request.url)
 
     return render_template('student_register.html')
 
 
+# ----------------------
+# 👨‍🏫 Faculty Registration
+# ----------------------
 @app.route('/register/faculty', methods=['GET', 'POST'])
 def register_faculty():
     if request.method == 'POST':
@@ -166,13 +181,16 @@ def register_faculty():
                 ''', (name, email, hashed))
             flash("✅ Faculty registered successfully", "success")
             return redirect(url_for('home'))
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
             flash("⚠️ Email already exists. Please use another.", "warning")
             return redirect(request.url)
 
     return render_template('faculty_register.html')
 
 
+# ----------------------
+# 🔑 Login (Student + Faculty)
+# ----------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -180,7 +198,8 @@ def login():
         password = hash_password(request.form['password'])
 
         with get_db() as db:
-            user = db.execute('SELECT * FROM users WHERE email = %s AND password = %s', (email, password)).fetchone()
+            db.execute('SELECT * FROM users WHERE email = %s AND password = %s', (email, password))
+            user = db.fetchone()
 
         if user:
             if user['role'] == 'admin':
@@ -202,13 +221,17 @@ def login():
     return render_template('login.html')
 
 
+# ----------------------
+# 🔓 Logout
+# ----------------------
 @app.route('/logout')
 def logout():
     session.clear()
     flash('🔓 Logged out successfully!', 'success')
     return redirect(url_for('home'))
-
-
+# ----------------------
+# 🎓 Faculty Dashboard
+# ----------------------
 @app.route('/faculty/dashboard')
 def faculty_dashboard():
     if session.get('role') != 'faculty':
@@ -216,52 +239,13 @@ def faculty_dashboard():
     return render_template('faculty_dashboard.html', name=session['name'])
 
 
-@app.route('/student/dashboard')
-def student_dashboard():
-    if 'user_id' not in session or session.get('role') != 'student':
-        return redirect(url_for('login'))
-
-    student_id = session['user_id']
-    with get_db() as db:
-        subjects = db.execute('''
-            SELECT * FROM subjects WHERE semester = (
-                SELECT semester FROM users WHERE id = %s
-            ) AND branch = (
-                SELECT branch FROM users WHERE id = %s
-            )
-        ''', (student_id, student_id)).fetchall()
-
-        attendance_summary = []
-        for subject in subjects:
-            total_hours = db.execute('''
-                SELECT COUNT(*) FROM attendance
-                WHERE subject_id = %s AND student_id = %s
-            ''', (subject['id'], student_id)).fetchone()[0]
-
-            present_hours = db.execute('''
-                SELECT COUNT(*) FROM attendance
-                WHERE subject_id = %s AND student_id = %s AND present = 1
-            ''', (subject['id'], student_id)).fetchone()[0]
-
-            percentage = (present_hours / total_hours * 100) if total_hours > 0 else 0
-            attendance_summary.append({
-                'subject_name': subject['name'],
-                'subject_code': subject['code'],
-                'subject_id': subject['id'],
-                'total': total_hours,
-                'present': present_hours,
-                'percentage': round(percentage, 2)
-            })
-
-    return render_template(
-        'student_dashboard.html',
-        name=session['name'],
-        attendance_summary=attendance_summary
-    )
+# ----------------------
+# ➕ Add Subject
+# ----------------------
 @app.route('/faculty/add_subject', methods=['GET', 'POST'])
 def add_subject():
-    if 'user_id' not in session or session.get('role') != 'faculty':
-        flash('⚠️ Unauthorized access. Please log in as faculty.', 'warning')
+    if session.get('role') != 'faculty':
+        flash('⚠️ Unauthorized access.', 'warning')
         return redirect(url_for('login'))
 
     if request.method == 'POST':
@@ -283,16 +267,23 @@ def add_subject():
     return render_template('add_subject.html')
 
 
+# ----------------------
+# 📚 Faculty View Subjects
+# ----------------------
 @app.route('/faculty/subjects')
 def faculty_subjects():
     if session.get('role') != 'faculty':
         return redirect(url_for('login'))
 
     with get_db() as db:
-        subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = %s', (session['user_id'],)).fetchall()
+        db.execute('SELECT * FROM subjects WHERE faculty_id = %s', (session['user_id'],))
+        subjects = db.fetchall()
     return render_template('faculty_subjects.html', subjects=subjects)
 
 
+# ----------------------
+# 🗑️ Delete Subject
+# ----------------------
 @app.route('/faculty/delete_subject/<int:subject_id>', methods=['POST'])
 def delete_subject(subject_id):
     if session.get('role') != 'faculty':
@@ -306,15 +297,19 @@ def delete_subject(subject_id):
     return redirect(url_for('faculty_subjects'))
 
 
+# ----------------------
+# 📅 Select Subject + Date + Hour for Attendance
+# ----------------------
 @app.route('/faculty/select_subject_for_attendance', methods=['GET', 'POST'])
 def mark_attendance_select_subject():
-    if 'user_id' not in session or session.get('role') != 'faculty':
+    if session.get('role') != 'faculty':
         flash('⚠️ Unauthorized access.', 'warning')
         return redirect(url_for('login'))
 
     with get_db() as db:
         faculty_id = session['user_id']
-        subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = %s', (faculty_id,)).fetchall()
+        db.execute('SELECT * FROM subjects WHERE faculty_id = %s', (faculty_id,))
+        subjects = db.fetchall()
 
     from datetime import date
     current_date = date.today().isoformat()
@@ -328,17 +323,24 @@ def mark_attendance_select_subject():
     return render_template('select_subject_for_attendance.html', subjects=subjects, current_date=current_date)
 
 
+# ----------------------
+# ✅ Mark Attendance
+# ----------------------
 @app.route('/faculty/mark/<int:subject_id>/<date>/<int:hour>', methods=['GET', 'POST'])
 def mark_attendance(subject_id, date, hour):
-    if 'user_id' not in session or session['role'] != 'faculty':
+    if session.get('role') != 'faculty':
         flash("Unauthorized access", "danger")
         return redirect(url_for('login'))
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,)).fetchone()
-        students = db.execute('''
-            SELECT * FROM users WHERE role = 'student' AND semester = %s AND branch = %s
-        ''', (subject['semester'], subject['branch'])).fetchall()
+        db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,))
+        subject = db.fetchone()
+
+        db.execute('''
+            SELECT * FROM users
+            WHERE role = 'student' AND semester = %s AND branch = %s
+        ''', (subject['semester'], subject['branch']))
+        students = db.fetchall()
 
     if request.method == 'POST':
         absentees = []
@@ -356,11 +358,20 @@ def mark_attendance(subject_id, date, hour):
             'status': present_status
         }
 
-        return render_template('attendance_preview.html', absentees=absentees, subject=subject, date=date, hour=hour)
+        return render_template(
+            'attendance_preview.html',
+            absentees=absentees,
+            subject=subject,
+            date=date,
+            hour=hour
+        )
 
     return render_template('mark_attendance.html', students=students, subject=subject, date=date, hour=hour)
 
 
+# ----------------------
+# 📝 Confirm Attendance
+# ----------------------
 @app.route('/faculty/mark/confirm', methods=['POST'])
 def confirm_attendance():
     if 'attendance_temp' not in session:
@@ -370,13 +381,15 @@ def confirm_attendance():
     data = session.pop('attendance_temp')
 
     with get_db() as db:
-        students = db.execute('''
-            SELECT * FROM users WHERE role = 'student' AND semester = (
+        db.execute('''
+            SELECT * FROM users
+            WHERE role = 'student' AND semester = (
                 SELECT semester FROM subjects WHERE id = %s
             ) AND branch = (
                 SELECT branch FROM subjects WHERE id = %s
             )
-        ''', (data['subject_id'], data['subject_id'])).fetchall()
+        ''', (data['subject_id'], data['subject_id']))
+        students = db.fetchall()
 
         for student in students:
             present = data['status'].get(student['id'], 0)
@@ -387,6 +400,9 @@ def confirm_attendance():
 
     flash("✅ Attendance successfully saved!", "success")
     return redirect(url_for('faculty_dashboard'))
+# ----------------------
+# 🔐 Admin Login
+# ----------------------
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
@@ -394,8 +410,8 @@ def admin_login():
         password = hash_password(request.form['password'])
 
         with get_db() as db:
-            user = db.execute('SELECT * FROM users WHERE email = %s AND password = %s AND role = "admin"',
-                              (email, password)).fetchone()
+            db.execute("SELECT * FROM users WHERE email = %s AND password = %s AND role = 'admin'", (email, password))
+            user = db.fetchone()
 
         if user:
             session['user_id'] = user['id']
@@ -409,14 +425,24 @@ def admin_login():
     return render_template('admin_login.html')
 
 
+# ----------------------
+# 🧑‍💼 Admin Dashboard
+# ----------------------
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if session.get('role') != 'admin':
         return redirect(url_for('home'))
     return render_template('admin_dashboard.html')
-# Helper: Check admin
+
+
+# Helper
 def is_admin():
     return session.get('role') == 'admin'
+
+
+# ----------------------
+# 👥 Admin: Manage Users
+# ----------------------
 @app.route('/admin/users', methods=['GET', 'POST'])
 def admin_users():
     if not is_admin(): abort(403)
@@ -443,17 +469,19 @@ def admin_users():
             filters['branch'] = branch
 
     with get_db() as db:
-        users = db.execute(query, params).fetchall()
+        db.execute(query, params)
+        users = db.fetchall()
+
     return render_template("admin_users.html", users=users, filters=filters)
 
 
 @app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
 def edit_user(user_id):
-    if not is_admin():
-        abort(403)
+    if not is_admin(): abort(403)
 
     with get_db() as db:
-        user = db.execute("SELECT * FROM users WHERE id = %s", (user_id,)).fetchone()
+        db.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        user = db.fetchone()
 
         if not user:
             flash("User not found", "danger")
@@ -481,12 +509,14 @@ def edit_user(user_id):
 
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
-    if not is_admin():
-        abort(403)
+    if not is_admin(): abort(403)
     with get_db() as db:
         db.execute('DELETE FROM users WHERE id = %s', (user_id,))
     flash('User deleted.', 'info')
     return redirect(url_for('admin_users'))
+# ----------------------
+# 📚 Admin: Subjects
+# ----------------------
 @app.route('/admin/subjects', methods=['GET', 'POST'])
 def admin_subjects():
     if not is_admin():
@@ -502,7 +532,7 @@ def admin_subjects():
         filters['branch'] = request.form.get('branch', '')
 
         if filters['keyword']:
-            query += " AND (name LIKE %s OR code LIKE %s)"
+            query += " AND (name ILIKE %s OR code ILIKE %s)"
             args.extend([f"%{filters['keyword']}%", f"%{filters['keyword']}%"])
         if filters['semester']:
             query += " AND semester = %s"
@@ -512,18 +542,19 @@ def admin_subjects():
             args.append(filters['branch'])
 
     with get_db() as db:
-        subjects = db.execute(query, args).fetchall()
+        db.execute(query, args)
+        subjects = db.fetchall()
 
     return render_template('admin_subjects.html', subjects=subjects, filters=filters)
 
 
 @app.route('/admin/edit_subject/<int:subject_id>', methods=['GET', 'POST'])
 def edit_subject(subject_id):
-    if not is_admin():
-        abort(403)
+    if not is_admin(): abort(403)
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,)).fetchone()
+        db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,))
+        subject = db.fetchone()
 
         if not subject:
             flash("Subject not found", "danger")
@@ -558,13 +589,18 @@ def delete_subject_admin(subject_id):
 
     flash('🗑️ Subject and related attendance deleted.', 'info')
     return redirect(url_for('admin_subjects'))
+
+
+# ----------------------
+# 🗓️ Admin: Attendance Records
+# ----------------------
 @app.route('/admin/attendance')
 def admin_attendance():
     if not is_admin():
         abort(403)
 
     with get_db() as db:
-        records = db.execute('''
+        db.execute('''
             SELECT a.date, a.hour, a.present,
                    u.name as student_name, u.roll_number,
                    s.name as subject_name, s.code
@@ -572,7 +608,8 @@ def admin_attendance():
             JOIN users u ON a.student_id = u.id
             JOIN subjects s ON a.subject_id = s.id
             ORDER BY date DESC, hour DESC
-        ''').fetchall()
+        ''')
+        records = db.fetchall()
 
     return render_template('admin_attendance.html', records=records)
 
@@ -589,13 +626,14 @@ def admin_view_student_attendance():
         roll_number = request.form.get('roll_number')
 
         with get_db() as db:
-            student = db.execute(
+            db.execute(
                 "SELECT * FROM users WHERE role='student' AND semester=%s AND branch=%s AND roll_number=%s",
                 (semester, branch, roll_number)
-            ).fetchone()
+            )
+            student = db.fetchone()
 
             if student:
-                records = db.execute('''
+                db.execute('''
                     SELECT s.id AS subject_id, s.name AS subject_name, s.code AS subject_code,
                            COUNT(a.id) AS total,
                            SUM(a.present) AS present
@@ -603,17 +641,20 @@ def admin_view_student_attendance():
                     JOIN subjects s ON a.subject_id = s.id
                     WHERE a.student_id = %s
                     GROUP BY s.id
-                ''', (student['id'],)).fetchall()
+                ''', (student['id'],))
+                records = db.fetchall()
 
     return render_template('admin_view_student_attendance.html', student=student, records=records)
 
 
+# ----------------------
+# 📋 Admin: Whitelist
+# ----------------------
 def save_whitelist(role, emails):
     with get_db() as db:
         db.execute("DELETE FROM whitelist WHERE role = %s", (role,))
         for email in emails:
             db.execute("INSERT INTO whitelist (email, role) VALUES (%s, %s)", (email.strip(), role))
-
 
 
 @app.route('/admin/whitelist/<role>', methods=['GET', 'POST'])
@@ -636,12 +677,14 @@ def manage_whitelist(role):
     return render_template('admin_whitelist.html', emails="\n".join(emails), role=role)
 
 
-
 @app.route('/admin/whitelist-options')
 def manage_whitelist_options():
     if not is_admin():
         abort(403)
     return render_template('manage_whitelist_options.html')
+# -----------------------------------------
+# 📄 View Attendance Detail (Student View)
+# -----------------------------------------
 @app.route('/student/attendance/<int:subject_id>')
 def view_attendance_detail(subject_id):
     student_id = session.get('user_id')
@@ -649,16 +692,22 @@ def view_attendance_detail(subject_id):
         student_id = request.args.get('student_id')
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,)).fetchone()
-        records = db.execute('''
+        db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,))
+        subject = db.fetchone()
+
+        db.execute('''
             SELECT * FROM attendance
             WHERE subject_id = %s AND student_id = %s
             ORDER BY date, hour
-        ''', (subject_id, student_id)).fetchall()
+        ''', (subject_id, student_id))
+        records = db.fetchall()
 
     return render_template('student_attendance_detail.html', subject=subject, records=records)
 
 
+# -----------------------------------------
+# 🧑‍🏫 Faculty View of Subject Attendance
+# -----------------------------------------
 @app.route('/faculty/subject/<int:subject_id>/attendance')
 def view_attendance_detail_faculty(subject_id):
     if 'user_id' not in session or session['role'] != 'faculty':
@@ -666,14 +715,15 @@ def view_attendance_detail_faculty(subject_id):
         return redirect(url_for('login'))
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = %s AND faculty_id = %s",
-                             (subject_id, session['user_id'])).fetchone()
+        db.execute("SELECT * FROM subjects WHERE id = %s AND faculty_id = %s",
+                   (subject_id, session['user_id']))
+        subject = db.fetchone()
 
         if not subject:
             flash("Subject not found or not authorized", "danger")
             return redirect(url_for('faculty_dashboard'))
 
-        records = db.execute('''
+        db.execute('''
             SELECT u.name AS student_name, u.roll_number,
                    COUNT(a.id) AS total_classes, SUM(a.present) AS present_count
             FROM attendance a
@@ -681,23 +731,32 @@ def view_attendance_detail_faculty(subject_id):
             WHERE a.subject_id = %s
             GROUP BY a.student_id
             ORDER BY u.roll_number
-        ''', (subject_id,)).fetchall()
+        ''', (subject_id,))
+        records = db.fetchall()
 
     return render_template('faculty_attendance_detail.html', subject=subject, records=records)
 
 
+# -----------------------------------------
+# 🔁 Basic Health Check Route
+# -----------------------------------------
 @app.route('/ping')
 def ping():
     return "pong"
 
 
+# -----------------------------------------
+# ❌ Disable Browser Caching
+# -----------------------------------------
 @app.after_request
 def add_cache_control(response):
     response.headers['Cache-Control'] = 'no-store'
     return response
 
 
-# Final entry point
+# -----------------------------------------
+# 🚀 Run App
+# -----------------------------------------
 if __name__ == '__main__':
     app.run(debug=True)
 
