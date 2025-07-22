@@ -244,6 +244,12 @@ def faculty_dashboard():
     if session.get('role') != 'faculty':
         return redirect(url_for('login'))
     return render_template('faculty_dashboard.html', name=session['name'])
+@app.route('/student/dashboard')
+def student_dashboard():
+    if session.get('role') != 'student':
+        return redirect(url_for('login'))
+    return render_template('student_dashboard.html', name=session['name'])
+
 
 
 # ----------------------
