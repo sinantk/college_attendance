@@ -8,6 +8,7 @@ from datetime import date
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
+
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
