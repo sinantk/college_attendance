@@ -382,31 +382,32 @@ def mark_attendance(subject_id, date, hour):
         students = db.fetchall()
 
     if request.method == 'POST':
-     absentees = []
-     present_status = {}
-     for student in students:
-        present = 1 if f"present_{student['id']}" in request.form else 0
-        present_status[str(student['id'])] = present  # ✅ FIXED: Use str key
-        if not present:
-            absentees.append(student['roll_number'])
+        absentees = []
+        present_status = {}
+        for student in students:
+            # Checkbox: if exists in form, it's present
+            present = 1 if f"present_{student['id']}" in request.form else 0
+            present_status[student['id']] = present
+            if not present:
+                absentees.append(student['roll_number'])
 
-     session['attendance_temp'] = {
-        'subject_id': subject_id,
-        'date': date,
-        'hour': hour,
-        'status': present_status
-     }
+        session['attendance_temp'] = {
+            'subject_id': subject_id,
+            'date': date,
+            'hour': hour,
+            'status': present_status
+        }
 
-     return render_template(
-        'attendance_preview.html',
-        absentees=absentees,
-        subject=subject,
-        date=date,
-        hour=hour
-    )
-
+        return render_template(
+            'attendance_preview.html',
+            absentees=absentees,
+            subject=subject,
+            date=date,
+            hour=hour
+        )
 
     return render_template('mark_attendance.html', students=students, subject=subject, date=date, hour=hour)
+
 
 
 # ----------------------
@@ -432,7 +433,8 @@ def confirm_attendance():
         students = db.fetchall()
 
         for student in students:
-            present = str(data['status'].get(student['id'], '0')) == '1'
+            # Convert to boolean: 1 => True, 0 => False
+            present = True if data['status'].get(student['id'], 0) == 1 else False
             db.execute('''
                 INSERT INTO attendance (student_id, subject_id, date, hour, present)
                 VALUES (%s, %s, %s, %s, %s)
