@@ -253,7 +253,7 @@ def student_dashboard():
     with get_db() as db:
         db.execute('''
             SELECT s.id AS subject_id, s.name AS subject_name, s.code AS subject_code,
-                   COUNT(a.id) AS total_classes,
+                   COUNT(a.id) AS total,
                    SUM(a.present::int) AS present
             FROM attendance a
             JOIN subjects s ON a.subject_id = s.id
@@ -262,7 +262,18 @@ def student_dashboard():
         ''', (student_id,))
         records = db.fetchall()
 
-    return render_template('student_dashboard.html', name=session['name'], records=records)
+    # Add percentage calculation
+    for rec in records:
+        total = rec['total']
+        present = rec['present'] or 0
+        rec['percentage'] = round((present / total) * 100, 2) if total > 0 else 0
+
+    return render_template(
+        'student_dashboard.html',
+        name=session['name'],
+        attendance_summary=records  # 🔁 match template variable
+    )
+
 
 
 
