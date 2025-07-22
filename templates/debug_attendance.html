@@ -1,0 +1,15 @@
+<!-- templates/debug_attendance.html -->
+<h3>Last 20 Attendance Records</h3>
+<table border="1">
+<tr><th>ID</th><th>Student ID</th><th>Subject ID</th><th>Date</th><th>Hour</th><th>Present</th></tr>
+{% for r in records %}
+<tr>
+  <td>{{ r.id }}</td>
+  <td>{{ r.student_id }}</td>
+  <td>{{ r.subject_id }}</td>
+  <td>{{ r.date }}</td>
+  <td>{{ r.hour }}</td>
+  <td>{{ r.present }}</td>
+</tr>
+{% endfor %}
+</table>
