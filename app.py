@@ -404,12 +404,13 @@ def confirm_attendance():
         ''', (data['subject_id'], data['subject_id']))
         students = db.fetchall()
 
-        for student in students:
-            present = data['status'].get(student['id'], 0)
-            db.execute('''
-                INSERT INTO attendance (student_id, subject_id, date, hour, present)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
+    for student in students:
+        present = bool(data['status'].get(student['id'], 0))  # ✅ Cast to boolean
+        db.execute('''
+            INSERT INTO attendance (student_id, subject_id, date, hour, present)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
+
 
     flash("✅ Attendance successfully saved!", "success")
     return redirect(url_for('faculty_dashboard'))
