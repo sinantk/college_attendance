@@ -7,22 +7,42 @@ from contextlib import contextmanager
 from datetime import date
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
+from dotenv import load_dotenv
 
+# 📦 Load .env variables
+load_dotenv()
+print("🔧 ENV LOADED:")
+print("DB_HOST:", os.getenv("DB_HOST"))
+print("DB_PORT:", os.getenv("DB_PORT"))
 
+# 🛠️ Flask app
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
-# 🔁 SQLAlchemy Engine for PostgreSQL with Connection Pooling
+# 🗃️ Database config using SQLAlchemy
+from sqlalchemy.engine.url import URL
+
+DATABASE = {
+    'drivername': 'postgresql',
+    'username': os.getenv("DB_USER"),
+    'password': os.getenv("DB_PASSWORD"),
+    'host': os.getenv("DB_HOST"),
+    'port': os.getenv("DB_PORT"),
+    'database': os.getenv("DB_NAME"),
+}
+
 engine = create_engine(
-    f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
+    URL.create(**DATABASE),
     pool_size=10,
     max_overflow=5,
     pool_timeout=30,
-    pool_recycle=1800
+    pool_recycle=1800,
+    echo=False
 )
 
 db_session = scoped_session(sessionmaker(bind=engine))
 
+# 🔄 Context manager for DB access
 @contextmanager
 def get_db():
     conn = engine.raw_connection()
@@ -30,6 +50,9 @@ def get_db():
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         yield cursor
         conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
     finally:
         cursor.close()
         conn.close()
