@@ -129,7 +129,7 @@ def register_student():
             with get_db() as db:
                 db.execute('''
                     INSERT INTO users (name, email, password, role, semester, branch, roll_number)
-                    VALUES (?, ?, ?, 'student', ?, ?, ?)
+                    VALUES (%s, %s, %s, 'student', %s, %s, %s)
                 ''', (name, email, hashed, semester, branch, roll_number))
             flash("✅ Student registered successfully", "success")
             return redirect(url_for('home'))
@@ -162,7 +162,7 @@ def register_faculty():
             with get_db() as db:
                 db.execute('''
                     INSERT INTO users (name, email, password, role)
-                    VALUES (?, ?, ?, 'faculty')
+                    VALUES (%s, %s, %s, 'faculty')
                 ''', (name, email, hashed))
             flash("✅ Faculty registered successfully", "success")
             return redirect(url_for('home'))
@@ -180,7 +180,7 @@ def login():
         password = hash_password(request.form['password'])
 
         with get_db() as db:
-            user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', (email, password)).fetchone()
+            user = db.execute('SELECT * FROM users WHERE email = %s AND password = %s', (email, password)).fetchone()
 
         if user:
             if user['role'] == 'admin':
@@ -225,9 +225,9 @@ def student_dashboard():
     with get_db() as db:
         subjects = db.execute('''
             SELECT * FROM subjects WHERE semester = (
-                SELECT semester FROM users WHERE id = ?
+                SELECT semester FROM users WHERE id = %s
             ) AND branch = (
-                SELECT branch FROM users WHERE id = ?
+                SELECT branch FROM users WHERE id = %s
             )
         ''', (student_id, student_id)).fetchall()
 
@@ -235,12 +235,12 @@ def student_dashboard():
         for subject in subjects:
             total_hours = db.execute('''
                 SELECT COUNT(*) FROM attendance
-                WHERE subject_id = ? AND student_id = ?
+                WHERE subject_id = %s AND student_id = %s
             ''', (subject['id'], student_id)).fetchone()[0]
 
             present_hours = db.execute('''
                 SELECT COUNT(*) FROM attendance
-                WHERE subject_id = ? AND student_id = ? AND present = 1
+                WHERE subject_id = %s AND student_id = %s AND present = 1
             ''', (subject['id'], student_id)).fetchone()[0]
 
             percentage = (present_hours / total_hours * 100) if total_hours > 0 else 0
@@ -274,7 +274,7 @@ def add_subject():
         with get_db() as db:
             db.execute('''
                 INSERT INTO subjects (name, code, semester, branch, faculty_id)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
             ''', (name, code, semester, branch, faculty_id))
 
         flash('📘 Subject added successfully!', 'success')
@@ -289,7 +289,7 @@ def faculty_subjects():
         return redirect(url_for('login'))
 
     with get_db() as db:
-        subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = ?', (session['user_id'],)).fetchall()
+        subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = %s', (session['user_id'],)).fetchall()
     return render_template('faculty_subjects.html', subjects=subjects)
 
 
@@ -299,8 +299,8 @@ def delete_subject(subject_id):
         abort(403)
 
     with get_db() as db:
-        db.execute("DELETE FROM attendance WHERE subject_id = ?", (subject_id,))
-        db.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
+        db.execute("DELETE FROM attendance WHERE subject_id = %s", (subject_id,))
+        db.execute("DELETE FROM subjects WHERE id = %s", (subject_id,))
 
     flash("Subject and related attendance deleted successfully", "success")
     return redirect(url_for('faculty_subjects'))
@@ -314,7 +314,7 @@ def mark_attendance_select_subject():
 
     with get_db() as db:
         faculty_id = session['user_id']
-        subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = ?', (faculty_id,)).fetchall()
+        subjects = db.execute('SELECT * FROM subjects WHERE faculty_id = %s', (faculty_id,)).fetchall()
 
     from datetime import date
     current_date = date.today().isoformat()
@@ -335,9 +335,9 @@ def mark_attendance(subject_id, date, hour):
         return redirect(url_for('login'))
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
+        subject = db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,)).fetchone()
         students = db.execute('''
-            SELECT * FROM users WHERE role = 'student' AND semester = ? AND branch = ?
+            SELECT * FROM users WHERE role = 'student' AND semester = %s AND branch = %s
         ''', (subject['semester'], subject['branch'])).fetchall()
 
     if request.method == 'POST':
@@ -372,9 +372,9 @@ def confirm_attendance():
     with get_db() as db:
         students = db.execute('''
             SELECT * FROM users WHERE role = 'student' AND semester = (
-                SELECT semester FROM subjects WHERE id = ?
+                SELECT semester FROM subjects WHERE id = %s
             ) AND branch = (
-                SELECT branch FROM subjects WHERE id = ?
+                SELECT branch FROM subjects WHERE id = %s
             )
         ''', (data['subject_id'], data['subject_id'])).fetchall()
 
@@ -382,7 +382,7 @@ def confirm_attendance():
             present = data['status'].get(student['id'], 0)
             db.execute('''
                 INSERT INTO attendance (student_id, subject_id, date, hour, present)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
             ''', (student['id'], data['subject_id'], data['date'], data['hour'], present))
 
     flash("✅ Attendance successfully saved!", "success")
@@ -394,7 +394,7 @@ def admin_login():
         password = hash_password(request.form['password'])
 
         with get_db() as db:
-            user = db.execute('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"',
+            user = db.execute('SELECT * FROM users WHERE email = %s AND password = %s AND role = "admin"',
                               (email, password)).fetchone()
 
         if user:
@@ -430,15 +430,15 @@ def admin_users():
         branch = request.form.get('branch')
 
         if role:
-            query += " AND role = ?"
+            query += " AND role = %s"
             params.append(role)
             filters['role'] = role
         if semester:
-            query += " AND semester = ?"
+            query += " AND semester = %s"
             params.append(semester)
             filters['semester'] = semester
         if branch:
-            query += " AND branch = ?"
+            query += " AND branch = %s"
             params.append(branch)
             filters['branch'] = branch
 
@@ -453,7 +453,7 @@ def edit_user(user_id):
         abort(403)
 
     with get_db() as db:
-        user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        user = db.execute("SELECT * FROM users WHERE id = %s", (user_id,)).fetchone()
 
         if not user:
             flash("User not found", "danger")
@@ -469,8 +469,8 @@ def edit_user(user_id):
             roll_number = request.form.get('roll_number') if role == 'student' else None
 
             db.execute('''
-                UPDATE users SET name=?, email=?, role=?, semester=?, branch=?, roll_number=?
-                WHERE id=?
+                UPDATE users SET name=%s, email=%s, role=%s, semester=%s, branch=%s, roll_number=%s
+                WHERE id=%s
             ''', (name, email, role, semester, branch, roll_number, user_id))
 
             flash("✅ User updated successfully", "success")
@@ -484,7 +484,7 @@ def delete_user(user_id):
     if not is_admin():
         abort(403)
     with get_db() as db:
-        db.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        db.execute('DELETE FROM users WHERE id = %s', (user_id,))
     flash('User deleted.', 'info')
     return redirect(url_for('admin_users'))
 @app.route('/admin/subjects', methods=['GET', 'POST'])
@@ -502,13 +502,13 @@ def admin_subjects():
         filters['branch'] = request.form.get('branch', '')
 
         if filters['keyword']:
-            query += " AND (name LIKE ? OR code LIKE ?)"
+            query += " AND (name LIKE %s OR code LIKE %s)"
             args.extend([f"%{filters['keyword']}%", f"%{filters['keyword']}%"])
         if filters['semester']:
-            query += " AND semester = ?"
+            query += " AND semester = %s"
             args.append(filters['semester'])
         if filters['branch']:
-            query += " AND branch = ?"
+            query += " AND branch = %s"
             args.append(filters['branch'])
 
     with get_db() as db:
@@ -523,7 +523,7 @@ def edit_subject(subject_id):
         abort(403)
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
+        subject = db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,)).fetchone()
 
         if not subject:
             flash("Subject not found", "danger")
@@ -537,8 +537,8 @@ def edit_subject(subject_id):
             faculty_id = request.form.get('faculty_id') or None
 
             db.execute('''
-                UPDATE subjects SET name=?, code=?, semester=?, branch=?, faculty_id=?
-                WHERE id=?
+                UPDATE subjects SET name=%s, code=%s, semester=%s, branch=%s, faculty_id=%s
+                WHERE id=%s
             ''', (name, code, semester, branch, faculty_id, subject_id))
 
             flash("✅ Subject updated successfully", "success")
@@ -553,8 +553,8 @@ def delete_subject_admin(subject_id):
         abort(403)
 
     with get_db() as db:
-        db.execute('DELETE FROM attendance WHERE subject_id = ?', (subject_id,))
-        db.execute('DELETE FROM subjects WHERE id = ?', (subject_id,))
+        db.execute('DELETE FROM attendance WHERE subject_id = %s', (subject_id,))
+        db.execute('DELETE FROM subjects WHERE id = %s', (subject_id,))
 
     flash('🗑️ Subject and related attendance deleted.', 'info')
     return redirect(url_for('admin_subjects'))
@@ -590,7 +590,7 @@ def admin_view_student_attendance():
 
         with get_db() as db:
             student = db.execute(
-                "SELECT * FROM users WHERE role='student' AND semester=? AND branch=? AND roll_number=?",
+                "SELECT * FROM users WHERE role='student' AND semester=%s AND branch=%s AND roll_number=%s",
                 (semester, branch, roll_number)
             ).fetchone()
 
@@ -601,7 +601,7 @@ def admin_view_student_attendance():
                            SUM(a.present) AS present
                     FROM attendance a
                     JOIN subjects s ON a.subject_id = s.id
-                    WHERE a.student_id = ?
+                    WHERE a.student_id = %s
                     GROUP BY s.id
                 ''', (student['id'],)).fetchall()
 
@@ -649,10 +649,10 @@ def view_attendance_detail(subject_id):
         student_id = request.args.get('student_id')
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = ?", (subject_id,)).fetchone()
+        subject = db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,)).fetchone()
         records = db.execute('''
             SELECT * FROM attendance
-            WHERE subject_id = ? AND student_id = ?
+            WHERE subject_id = %s AND student_id = %s
             ORDER BY date, hour
         ''', (subject_id, student_id)).fetchall()
 
@@ -666,7 +666,7 @@ def view_attendance_detail_faculty(subject_id):
         return redirect(url_for('login'))
 
     with get_db() as db:
-        subject = db.execute("SELECT * FROM subjects WHERE id = ? AND faculty_id = ?",
+        subject = db.execute("SELECT * FROM subjects WHERE id = %s AND faculty_id = %s",
                              (subject_id, session['user_id'])).fetchone()
 
         if not subject:
@@ -678,7 +678,7 @@ def view_attendance_detail_faculty(subject_id):
                    COUNT(a.id) AS total_classes, SUM(a.present) AS present_count
             FROM attendance a
             JOIN users u ON u.id = a.student_id
-            WHERE a.subject_id = ?
+            WHERE a.subject_id = %s
             GROUP BY a.student_id
             ORDER BY u.roll_number
         ''', (subject_id,)).fetchall()
