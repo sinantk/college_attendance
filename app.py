@@ -8,6 +8,8 @@ from datetime import date
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
+from datetime import datetime
+
 
 # 📦 Load .env variables
 if os.getenv("FLASK_ENV") != "production":
@@ -94,7 +96,8 @@ def init_db():
                 subject_id INTEGER,
                 date DATE,
                 hour INTEGER,
-                present BOOLEAN
+                present BOOLEAN,
+                UNIQUE(student_id, subject_id, date, hour)
             )
         ''')
         db.execute('''
@@ -381,7 +384,22 @@ def mark_attendance_select_subject():
         subject_id = request.form['subject_id']
         date_val = request.form['date']
         hour = request.form['hour']
+
+        # ✅ Check if attendance already exists
+        with get_db() as db:
+            db.execute('''
+                SELECT 1 FROM attendance
+                WHERE subject_id = %s AND date = %s AND hour = %s
+                LIMIT 1
+            ''', (subject_id, date_val, hour))
+            exists = db.fetchone()
+
+        if exists:
+            flash("⚠️ Attendance already marked for this subject, date, and hour.", "warning")
+            return redirect(url_for('mark_attendance_select_subject'))
+
         return redirect(url_for('mark_attendance', subject_id=subject_id, date=date_val, hour=hour))
+
 
     return render_template('select_subject_for_attendance.html', subjects=subjects, current_date=current_date)
 
@@ -394,6 +412,13 @@ def mark_attendance(subject_id, date, hour):
     if session.get('role') != 'faculty':
         flash("Unauthorized access", "danger")
         return redirect(url_for('login'))
+
+    # Convert date string to datetime object
+    try:
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()  # Assuming format is YYYY-MM-DD
+    except ValueError:
+        flash("Invalid date format", "danger")
+        return redirect(url_for('faculty_dashboard'))  # Adjust redirect as needed
 
     with get_db() as db:
         db.execute("SELECT * FROM subjects WHERE id = %s", (subject_id,))
@@ -410,7 +435,6 @@ def mark_attendance(subject_id, date, hour):
         present_status = {}
 
         for student in students:
-            # FORCE student ID to int, ensure keys match in confirm step
             student_id = int(student['id'])
             present = 1 if f"present_{student_id}" in request.form else 0
             present_status[str(student['id'])] = present
@@ -429,11 +453,12 @@ def mark_attendance(subject_id, date, hour):
             'attendance_preview.html',
             absentees=absentees,
             subject=subject,
-            date=date,
+            date=date_obj,
             hour=hour
         )
 
-    return render_template('mark_attendance.html', students=students, subject=subject, date=date, hour=hour)
+    return render_template('mark_attendance.html', students=students, subject=subject, date=date_obj, hour=hour)
+
 
 
 

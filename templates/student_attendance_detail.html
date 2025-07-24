@@ -2,59 +2,53 @@
 {% block title %}Attendance Detail{% endblock %}
 
 {% block content %}
-<div class="container  py-4" style="max-width: 650px;">
-  <div class="card shadow p-4 rounded-4">
-    <h4 class="text-center mb-3">📅 Attendance Details</h4>
-    <p class="text-center text-muted mb-2">
-      <strong>{{ subject.name }}</strong> ({{ subject.code }})
-    </p>
+<div class="w-100 d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+  <div class="w-100 px-3" style="max-width: 650px;">
+    <div class="card shadow p-4 rounded-4 w-100">
+      <h4 class="text-center mb-3">📅 Attendance Details</h4>
+      <p class="text-center text-muted mb-2">
+        <strong>{{ subject.name }}</strong> ({{ subject.code }})
+      </p>
 
-    <div class="table-responsive">
-      <table class="table table-bordered mt-3 text-center">
-        <thead class="table-light">
-          <tr>
-            <th>Date</th>
-            <th>Hour</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for record in records %}
-          <tr>
-            <td>{{ record.date }}</td>
-            <td>{{ record.hour }}</td>
-            <td>
-              {% if record.present %}
-                ✅ Present
-              {% else %}
-                ❌ Absent
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="3" class="text-center text-muted">No attendance data.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      <div class="table-responsive">
+        <table class="table table-bordered mt-3 text-center">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Hour</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+            <tr>
+              <td>{{ record.date.strftime('%d-%m-%Y') }}</td>
 
-    <div class="d-grid mt-3">
-      {% if session['role'] == 'admin' %}
-      <div class="text-center mt-2">
-      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
-    </div>
+              <td>{{ record.hour }}</td>
+              <td>
+                {% if record.present %}
+                  ✅ Present
+                {% else %}
+                  ❌ Absent
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" class="text-center text-muted">No attendance data.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-  
-{% else %}
-  <div class="text-center mt-2">
-      <a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
-    </div>
-{% endif %}
-
+      <div class="d-grid mt-3">
+        <div class="text-center mt-2">
+          <a href="{{ url_for(session['role'] + '_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 {% endblock %}
- <
+

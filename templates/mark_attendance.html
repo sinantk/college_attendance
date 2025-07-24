@@ -26,7 +26,8 @@
 
     <div class="mb-3">
       <p class="mb-1"><strong>Subject:</strong> {{ subject.name }} ({{ subject.code }})</p>
-      <p class="mb-1"><strong>Date:</strong> {{ date }}</p>
+      <p class="mb-1"><strong>Date:</strong> {{ date.strftime('%d-%m-%Y') }}</p>
+
       <p class="mb-3"><strong>Hour:</strong> {{ hour }}</p>
     </div>
 
@@ -51,6 +52,9 @@
 
   <div class="text-center mt-4">
     <button type="submit" class="btn btn-success">✅ Submit Attendance</button>
+    <div class="text-center mt-2">
+      <a href="{{ url_for('mark_attendance_select_subject') }}" class="btn btn-secondary">← Back to Selection</a>
+    </div>
   </div>
 </form>
 
