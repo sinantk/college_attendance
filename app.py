@@ -427,6 +427,7 @@ def mark_attendance(subject_id, date, hour):
         db.execute('''
             SELECT * FROM users
             WHERE role = 'student' AND semester = %s AND branch = %s
+            ORDER BY roll_number::int       
         ''', (subject['semester'], subject['branch']))
         students = db.fetchall()
 
@@ -858,6 +859,7 @@ def debug_attendance_table():
         db.execute("SELECT * FROM attendance ORDER BY id DESC LIMIT 20")
         records = db.fetchall()
     return render_template('debug_attendance.html', records=records)
+
 
 
 # -----------------------------------------

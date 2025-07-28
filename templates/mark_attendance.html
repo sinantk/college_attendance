@@ -31,7 +31,10 @@
       <p class="mb-3"><strong>Hour:</strong> {{ hour }}</p>
     </div>
 
-    <form method="POST">
+    <!-- Replace your <form method="POST"> ... </form> block with this: -->
+
+{% if students %}
+<form method="POST">
   <div class="alert alert-info text-center mb-4">
     ✅ All students are marked present by default. Uncheck absentees.
   </div>
@@ -57,6 +60,20 @@
     </div>
   </div>
 </form>
+
+{% else %}
+<div class="alert alert-warning text-center">
+  🚫 No students enrolled for this subject.
+</div>
+
+<div class="text-center mt-4">
+  <button class="btn btn-success" disabled>✅ Submit Attendance</button>
+  <div class="text-center mt-2">
+    <a href="{{ url_for('mark_attendance_select_subject') }}" class="btn btn-secondary">← Back to Selection</a>
+  </div>
+</div>
+{% endif %}
+
 
   </div>
 </div>
