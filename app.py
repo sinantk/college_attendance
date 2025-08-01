@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
 from datetime import datetime
-
+from collections import defaultdict
 
 # 📦 Load .env variables
 if os.getenv("FLASK_ENV") != "production":
@@ -859,6 +859,73 @@ def debug_attendance_table():
         db.execute("SELECT * FROM attendance ORDER BY id DESC LIMIT 20")
         records = db.fetchall()
     return render_template('debug_attendance.html', records=records)
+
+@app.route('/faculty/subject/<int:subject_id>/edit/<student_roll>', methods=['GET', 'POST'])
+def edit_attendance(subject_id, student_roll):
+    
+    if 'user_id' not in session or session['role'] != 'faculty':
+        abort(403)
+
+    with get_db() as db:
+        # Get subject info
+        db.execute("SELECT * FROM subjects WHERE id = %s AND faculty_id = %s", (subject_id, session['user_id']))
+        subject = db.fetchone()
+        if not subject:
+            flash("Subject not found or not authorized", "danger")
+            return redirect(url_for('faculty_dashboard'))
+
+        # Get student info
+        db.execute("SELECT * FROM users WHERE roll_number = %s AND semester = %s AND branch = %s",
+                   (student_roll, subject['semester'], subject['branch']))
+        student = db.fetchone()
+        if not student:
+            flash("Student not found in this subject", "danger")
+            return redirect(url_for('faculty_dashboard'))
+
+        # Handle form
+        if request.method == 'POST':
+            date_val = request.form['date']
+            hour = int(request.form['hour'])
+            new_status = request.form['present'] == '1'
+
+            db.execute('''
+                UPDATE attendance
+                SET present = %s
+                WHERE subject_id = %s AND student_id = %s AND date = %s AND hour = %s
+            ''', (new_status, subject_id, student['id'], date_val, hour))
+
+            flash("✅ Attendance updated successfully", "success")
+            return redirect(url_for('view_attendance_detail_faculty', subject_id=subject_id))
+
+        # Load previous attendance records for the student in this subject
+        db.execute('''
+            SELECT date, hour, present
+            FROM attendance
+            WHERE subject_id = %s AND student_id = %s
+            ORDER BY date DESC, hour DESC
+        ''', (subject_id, student['id']))
+        records = db.fetchall()
+        unique_dates = sorted({r['date'] for r in records}, reverse=True)
+        unique_hours = sorted({r['hour'] for r in records})
+
+           
+          
+
+    # Group hours by date for dynamic dropdown
+    date_to_hours = defaultdict(list)
+    for r in records:
+     date_to_hours[str(r['date'])].append(r['hour'])
+
+# Remove duplicates and sort
+    for date in date_to_hours:
+     date_to_hours[date] = sorted(set(date_to_hours[date]))
+
+    return render_template('edit_attendance.html',
+                       subject=subject,
+                       student=student,
+                       records=records,
+                       unique_dates=unique_dates,
+                       date_to_hours=date_to_hours)
 
 
 

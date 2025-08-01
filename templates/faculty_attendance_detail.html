@@ -15,28 +15,33 @@
     <div class="table-responsive">
       <table class="table table-bordered table-striped">
         <thead class="table-dark text-center">
-          <tr>
-            <th>Roll No</th>
-            <th>Name</th>
-            <th>Present</th>
-            <th>Total</th>
-            <th>Percentage</th>
-          </tr>
-        </thead>
-        <tbody class="text-center">
-          {% for r in records %}
-          <tr>
-            <td>{{ r.roll_number }}</td>
-            <td>{{ r.student_name }}</td>
-            <td>{{ r.present_count or 0 }}</td>
-            <td>{{ r.total_classes }}</td>
-            <td>
-              {% set percent = (r.present_count or 0) / r.total_classes * 100 %}
-              {{ percent | round(1) }}%
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
+  <tr>
+    <th>Roll No</th>
+    <th>Name</th>
+    <th>Present</th>
+    <th>Total</th>
+    <th>Percentage</th>
+    <th>Action</th>
+  </tr>
+</thead>
+<tbody class="text-center">
+  {% for r in records %}
+  <tr>
+    <td>{{ r.roll_number }}</td>
+    <td>{{ r.student_name }}</td>
+    <td>{{ r.present_count or 0 }}</td>
+    <td>{{ r.total_classes }}</td>
+    <td>
+      {% set percent = (r.present_count or 0) / r.total_classes * 100 %}
+      {{ percent | round(1) }}%
+    </td>
+    <td>
+      <a href="{{ url_for('edit_attendance', subject_id=subject.id, student_roll=r.roll_number) }}" class="btn btn-sm btn-warning">✏️ Edit</a>
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+
       </table>
     </div>
     {% else %}
