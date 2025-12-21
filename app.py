@@ -10,6 +10,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
 from datetime import datetime
 from collections import defaultdict
+from sqlalchemy import text
 
 # 📦 Load .env variables
 if os.getenv("FLASK_ENV") != "production":
@@ -936,3 +937,13 @@ def edit_attendance(subject_id, student_roll):
 if __name__ == '__main__':
     app.run(debug=True)
 
+
+
+@app.route("/health")
+def health():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return "OK", 200
+    except Exception as e:
+        return str(e), 500
