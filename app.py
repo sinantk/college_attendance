@@ -37,7 +37,7 @@ DATABASE = {
 
 engine = create_engine(
     URL.create(**DATABASE),
-    pool_size=5,
+    pool_size=3,
     max_overflow=2,
     pool_timeout=30,
     pool_recycle=1800,
@@ -933,10 +933,9 @@ def edit_attendance(subject_id, student_roll):
 
 # -----------------------------------------
 # 🚀 Run App
-# -----------------------------------------
-if __name__ == '__main__':
-    app.run(debug=True)
-
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
 
 @app.route("/health")
