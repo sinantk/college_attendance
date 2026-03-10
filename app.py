@@ -37,11 +37,11 @@ DATABASE = {
 
 engine = create_engine(
     URL.create(**DATABASE),
-    pool_size=10,
-    max_overflow=5,
+    pool_size=5,
+    max_overflow=2,
     pool_timeout=30,
     pool_recycle=1800,
-    echo=False
+    pool_pre_ping=True
 )
 
 db_session = scoped_session(sessionmaker(bind=engine))
@@ -49,14 +49,14 @@ db_session = scoped_session(sessionmaker(bind=engine))
 # 🔄 Context manager for DB access
 @contextmanager
 def get_db():
-    conn = engine.raw_connection()
+    conn = engine.connect()
+    cursor = conn.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         yield cursor
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        raise e
+        conn.connection.commit()
+    except Exception:
+        conn.connection.rollback()
+        raise
     finally:
         cursor.close()
         conn.close()
