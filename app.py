@@ -124,7 +124,17 @@ def init_db():
             ''', ("Admin", admin_email, hashed, 'admin'))
             print(f"✅ Admin created: {admin_email}")
 
-init_db()
+_db_initialized = False
+
+@app.before_request
+def ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            init_db()
+            _db_initialized = True
+        except Exception as e:
+            print(f"❌ DB init failed: {e}")
 
 # 🏠 Home route
 @app.route('/')
