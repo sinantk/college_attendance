@@ -25,14 +25,26 @@ app.secret_key = 'your-secret-key'
 # 🗃️ Database config using SQLAlchemy
 from sqlalchemy.engine.url import URL
 
+import socket
+
+def resolve_ipv4(hostname):
+    try:
+        results = socket.getaddrinfo(hostname, None, socket.AF_INET)
+        return results[0][4][0]
+    except Exception:
+        return hostname
+
+_db_host = os.getenv("DB_HOST", "")
+_db_host_ipv4 = resolve_ipv4(_db_host)
+print(f"🔍 DB host resolved to IPv4: {_db_host_ipv4}")
+
 DATABASE = {
     'drivername': 'postgresql',
     'username': os.getenv("DB_USER"),
     'password': os.getenv("DB_PASSWORD"),
-    'host': os.getenv("DB_HOST"),
+    'host': _db_host_ipv4,
     'port': os.getenv("DB_PORT"),
     'database': os.getenv("DB_NAME"),
-    
 }
 
 engine = create_engine(
