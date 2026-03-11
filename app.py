@@ -23,41 +23,15 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
 # 🗃️ Database config using SQLAlchemy
-from sqlalchemy.engine.url import URL
-
-import socket
-
-def resolve_ipv4(hostname):
-    try:
-        results = socket.getaddrinfo(hostname, None, socket.AF_INET)
-        return results[0][4][0]
-    except Exception:
-        return hostname
-
-_db_host = os.getenv("DB_HOST", "")
-_db_host_ipv4 = resolve_ipv4(_db_host)
-print(f"🔍 DB host resolved to IPv4: {_db_host_ipv4}")
-
-DATABASE = {
-    'drivername': 'postgresql',
-    'username': os.getenv("DB_USER"),
-    'password': os.getenv("DB_PASSWORD"),
-    'host': _db_host_ipv4,
-    'port': os.getenv("DB_PORT"),
-    'database': os.getenv("DB_NAME"),
-}
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
-    URL.create(**DATABASE),
+    DATABASE_URL,
     pool_size=3,
     max_overflow=2,
     pool_timeout=30,
     pool_recycle=1800,
-    pool_pre_ping=True,
-    connect_args={
-        "connect_timeout": 10,
-        "sslmode": "require"
-    }
+    pool_pre_ping=True
 )
 
 db_session = scoped_session(sessionmaker(bind=engine))
